@@ -12,6 +12,7 @@ import {
   type ClusteredAnswer,
   type OracleOutcome,
 } from "./rules";
+import { MATCH_THRESHOLD, equivalenceNoul } from "./rubric";
 
 /**
  * Server-side Jev adapter. Convex actions have no ctx.db: reads go through
@@ -24,7 +25,6 @@ import {
 
 declare const process: { env: Record<string, string | undefined> };
 
-const MATCH_THRESHOLD = 0.5;
 const MAX_AUTO_RETRIES = 3;
 const MAX_ATTEMPTS = 8;
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -56,24 +56,7 @@ async function jevDecisions(
   }
   const questions: Record<string, unknown> = {};
   pairs.forEach((pair, index) => {
-    questions[`pair${index}`] = {
-      type: "noul",
-      // Player text is untrusted DATA referenced by the question, never
-      // instructions.
-      instructions: {
-        prompt: promptText,
-        answer_a: pair.a,
-        answer_b: pair.b,
-        question:
-          "Do `answer_a` and `answer_b` express the same specific thought or thing for `prompt`, ignoring spelling, casing, and phrasing?",
-      },
-      criteria: {
-        true:
-          "Exact contextual equivalence: the same referent — synonyms, plurals, abbreviations, or minor spelling variants (car/automobile, goose/geese).",
-        false:
-          "Different referents, even related ones or the same category (car/bus, goose/swan, dog/cat).",
-      },
-    };
+    questions[`pair${index}`] = equivalenceNoul(promptText, pair.a, pair.b);
   });
   const response = await fetch(url, {
     method: "POST",

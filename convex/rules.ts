@@ -23,7 +23,7 @@ export const SOULMATE_UNIQUE_PARTNER_POINTS = 4;
 export const TWO_PLAYER_HOUSE_ANSWER_COUNT = 3;
 
 /** Curated equivalence rubric version. Retained adjudications record it. */
-export const EQUIVALENCE_RUBRIC_VERSION = 1;
+export const EQUIVALENCE_RUBRIC_VERSION = 2;
 /** Bump when clustering or scoring semantics change. */
 export const RULES_VERSION = "kindred-rules/1";
 
@@ -104,7 +104,20 @@ export function normalizeAnswer(raw: string): string {
   while (end > start && (edgePunctuation.has(chars[end - 1]!) || chars[end - 1] === " ")) {
     end -= 1;
   }
-  return chars.slice(start, end).join("").replace(/\s+/g, " ").trim();
+  const collapsed = chars.slice(start, end).join("").replace(/\s+/g, " ").trim();
+  // Leading English articles carry no referent: "a car" and "car" are the
+  // same answer and collapse canonically without an oracle call. Strip only
+  // standalone leading words (never letters inside hyphenated or fused
+  // words: "a-b-c", "abe"), and never strip to nothing ("a" stays "a").
+  let stripped = collapsed;
+  for (;;) {
+    const next = stripped.replace(/^(?:a|an|the) (?=\S)/, "");
+    if (next === stripped) {
+      break;
+    }
+    stripped = next;
+  }
+  return stripped;
 }
 
 /** Deterministic, order-independent, collision-free key for an answer pair. */

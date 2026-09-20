@@ -41,7 +41,12 @@ function sub(playerId: string, text: string): AnswerSubmission {
 test("normalizeAnswer canonicalizes case, spacing, punctuation, unicode", () => {
   assert.equal(normalizeAnswer("  CAR!  "), "car");
   assert.equal(normalizeAnswer("New   York"), "new york");
-  assert.equal(normalizeAnswer("\tThe\tMoon\n"), "the moon");
+  assert.equal(normalizeAnswer("\tThe\tMoon\n"), "moon");
+  assert.equal(normalizeAnswer("A car"), "car");
+  assert.equal(normalizeAnswer("an owl"), "owl");
+  assert.equal(normalizeAnswer("the beatles"), "beatles");
+  assert.equal(normalizeAnswer("a"), "a");
+  assert.equal(normalizeAnswer("The A-Team"), "a-team");
   assert.equal(normalizeAnswer("caf\u00e9"), normalizeAnswer("cafe\u0301"));
   assert.equal(normalizeAnswer("'quoted'"), "quoted");
   assert.equal(normalizeAnswer("...maybe..."), "maybe");

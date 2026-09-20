@@ -86,6 +86,18 @@ export const PROMPT_DECK: Prompt[] = [
     category: "ordinary",
     houseAnswers: ["something dumb and fun", "the long one with wizards", "a documentary, honestly"],
   },
+  {
+    id: "road-trip-vehicle",
+    text: "Your ideal road trip vehicle",
+    category: "ordinary",
+    houseAnswers: ["whatever runs", "a van you can sleep in", "a bus, honestly"],
+  },
+  {
+    id: "park-birds",
+    text: "Birds you'd feed at the park",
+    category: "unusual",
+    houseAnswers: ["the pigeons, obviously", "swans (risky)", "ducks, no negotiation"],
+  },
 ];
 
 export const promptById = new Map(PROMPT_DECK.map((p) => [p.id, p]));
