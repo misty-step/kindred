@@ -7,3 +7,6 @@ node_modules/
 next-env.d.ts
 test-results/
 .vercel/
+.open-next/
+.wrangler/
+.env.local.*
