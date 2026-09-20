@@ -1,3 +1,9 @@
 packages:
   - vendor/parlor/packages/*
   - vendor/parlor/integrations/*
+
+# pnpm 11 reads settings here, not from package.json's "pnpm" field.
+# esbuild's postinstall must run or fresh machines (CI, QA VMs) fail
+# pnpm install with ERR_PNPM_IGNORED_BUILDS.
+onlyBuiltDependencies:
+  - esbuild
