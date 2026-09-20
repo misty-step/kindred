@@ -86,7 +86,7 @@ export const start = mutation({
       matchId: match.id,
       mode: args.mode,
       promptIds,
-      pairs,
+      ...(pairs !== undefined ? { pairs } : {}),
     });
     await ctx.db.insert("rounds", {
       gameId,
@@ -491,6 +491,8 @@ export const view = query({
           displayName: m.displayName,
           seatIndex: m.seatIndex,
           isHost: m.playerId === room.hostPlayerId,
+          joinedAt: m.joinedAt,
+          lastSeenAt: m.lastSeenAt ?? 0,
         })),
     };
     if (member.closedAt !== undefined) {

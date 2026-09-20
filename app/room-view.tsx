@@ -110,6 +110,7 @@ export function RoomView({ roomId, guestToken, joinUrl, onExit }: Props) {
   const match = room.match;
   const active = match !== null && match.status === "active";
   const round = match && "round" in match ? match.round : null;
+  const roundCount = match && "round" in match ? (match.roundCount ?? 0) : 0;
   const reveal = match && "reveal" in match ? match.reveal : null;
 
   return (
@@ -511,14 +512,14 @@ export function RoomView({ roomId, guestToken, joinUrl, onExit }: Props) {
                       >
                         {busy === "advance"
                           ? "Moving on…"
-                          : round.index + 1 < match.roundCount
+                          : round.index + 1 < roundCount
                             ? "Next round"
                             : "Finish and see the record"}
                       </button>
                     ) : (
                       <p role="status">
                         Waiting for the host to{" "}
-                        {round.index + 1 < match.roundCount
+                        {round.index + 1 < roundCount
                           ? "start the next round"
                           : "finish the game"}
                         .

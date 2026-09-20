@@ -70,7 +70,9 @@ export default function Page() {
     try {
       const args = { displayName: name.value, guestToken: guest.credential };
       const result = mode === "create" ? await createRoom(args) : await joinRoom({ ...args, code });
-      if ("ok" in result && !result.ok) throw new Error(result.code);
+      if (!("roomId" in result)) {
+        throw new Error("code" in result ? result.code : "ROOM_UNAVAILABLE");
+      }
       setRoomId(result.roomId);
       setCode(result.code);
       const url = new URL(window.location.href);

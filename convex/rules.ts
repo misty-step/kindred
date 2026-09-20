@@ -155,10 +155,10 @@ export async function clusterAnswers(
   retainedVerdicts: Record<string, OracleOutcome> = {},
 ): Promise<ClusterResult> {
   const answers: ClusteredAnswer[] = submissions.map((s) => ({
-    answerId: s.answerId,
     playerId: s.playerId,
     text: s.text,
     normalized: normalizeAnswer(s.text),
+    ...(s.answerId !== undefined ? { answerId: s.answerId } : {}),
   }));
 
   const verdicts: Record<string, OracleOutcome> = { ...retainedVerdicts };
