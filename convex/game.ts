@@ -606,7 +606,13 @@ export const view = query({
         },
         reveal: projected,
         sessionRecord: game.sessionRecord ?? null,
-        totals: game.totals ?? null,
+        totals: game.totals
+          ? game.totals.map((total) => ({
+              playerId: total.playerId,
+              name: namesById.get(total.playerId) ?? "Player",
+              points: total.points,
+            }))
+          : null,
       },
     };
   },
