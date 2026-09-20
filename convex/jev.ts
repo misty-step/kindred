@@ -1,6 +1,7 @@
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
-import { internalAction } from "./_generated/server";
+import { internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { promptById } from "./prompts";
 import {
   EQUIVALENCE_RUBRIC_VERSION,
@@ -13,12 +14,15 @@ import {
 } from "./rules";
 
 /**
- * Server-side Jev adapter. One decisions call per round carries one noul per
- * still-unadjudicated canonical pair, so an outage leaves the whole round
- * pending — never partially or falsely judged. Verdicts are retained per
- * (prompt, pair) with their probability and rubric version; duplicate
- * submissions hit that cache and never reroll a judgment.
+ * Server-side Jev adapter. Convex actions have no ctx.db: reads go through
+ * internal queries, writes through internal mutations. One decisions call per
+ * round carries one noul per still-unadjudicated canonical pair, so an outage
+ * leaves the whole round pending — never partially or falsely judged.
+ * Verdicts are retained per (prompt, pair) with probability and rubric
+ * version; duplicate submissions hit that cache and never reroll a judgment.
  */
+
+declare const process: { env: Record<string, string | undefined> };
 
 const MATCH_THRESHOLD = 0.5;
 const MAX_AUTO_RETRIES = 3;
@@ -44,9 +48,9 @@ async function jevDecisions(
   promptText: string,
   pairs: PendingPair[],
 ): Promise<Decision[]> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  const model = process.env.JEV_MODEL;
-  const url = process.env.JEV_DECISIONS_URL;
+  const apiKey = process.env["OPENROUTER_API_KEY"];
+  const model = process.env["JEV_MODEL"];
+  const url = process.env["JEV_DECISIONS_URL"];
   if (!apiKey || !model || !url) {
     throw new Error("JEV_UNCONFIGURED");
   }
@@ -113,10 +117,9 @@ async function jevDecisions(
   });
 }
 
-export const adjudicateRound = internalAction({
-  args: { roundId: v.id("rounds"), attempt: v.number() },
-  returns: v.null(),
-  handler: async (ctx, args): Promise<null> => {
+export const loadRoundState = internalQuery({
+  args: { roundId: v.id("rounds") },
+  handler: async (ctx, args) => {
     const round = await ctx.db.get(args.roundId);
     if (!round || round.status !== "adjudicating") {
       return null;
@@ -129,26 +132,137 @@ export const adjudicateRound = internalAction({
     if (!prompt) {
       return null;
     }
-
     const answers = await ctx.db
       .query("answers")
       .withIndex("by_round", (q) => q.eq("roundId", round._id))
       .collect();
+    const retainedRows = await ctx.db
+      .query("adjudications")
+      .withIndex("by_prompt_pair", (q) => q.eq("promptId", round.promptId))
+      .collect();
+    const participants = await ctx.db
+      .query("matchParticipants")
+      .withIndex("by_match", (q) => q.eq("matchId", round.matchId))
+      .collect();
+    return {
+      promptId: round.promptId,
+      promptText: prompt.text,
+      mode: game.mode,
+      pairs: game.pairs ?? null,
+      answers: answers.map((answer) => ({
+        playerId: answer.playerId,
+        text: answer.text,
+        normalized: answer.normalized,
+      })),
+      retained: retainedRows.map((row) => ({
+        pairKey: row.pairKey,
+        verdict: row.verdict,
+      })),
+      participantIds: participants.map((participant) => participant.playerId),
+    };
+  },
+});
+
+export const saveAdjudications = internalMutation({
+  args: {
+    rows: v.array(
+      v.object({
+        promptId: v.string(),
+        pairKey: v.string(),
+        a: v.string(),
+        b: v.string(),
+        verdict: v.union(v.literal("match"), v.literal("distinct")),
+        probability: v.number(),
+        model: v.string(),
+        rubricVersion: v.number(),
+      }),
+    ),
+  },
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> => {
+    for (const row of args.rows) {
+      await ctx.db.insert("adjudications", row);
+    }
+    return null;
+  },
+});
+
+export const failAttempt = internalMutation({
+  args: { roundId: v.id("rounds"), attempts: v.number() },
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> => {
+    await ctx.db.patch(args.roundId, { attempts: args.attempts });
+    return null;
+  },
+});
+
+export const saveRoundResult = internalMutation({
+  args: {
+    roundId: v.id("rounds"),
+    clusters: v.array(
+      v.object({
+        anchor: v.string(),
+        answers: v.array(
+          v.object({
+            playerId: v.id("players"),
+            text: v.string(),
+            normalized: v.string(),
+          }),
+        ),
+      }),
+    ),
+    scores: v.array(v.object({ playerId: v.id("players"), points: v.number() })),
+    rubricVersion: v.number(),
+    model: v.string(),
+    revealedAt: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> => {
+    const existing = await ctx.db
+      .query("roundResults")
+      .withIndex("by_round", (q) => q.eq("roundId", args.roundId))
+      .unique();
+    if (!existing) {
+      await ctx.db.insert("roundResults", {
+        roundId: args.roundId,
+        clusters: args.clusters,
+        scores: args.scores,
+        overrides: [],
+        pendingPairs: 0,
+        rubricVersion: args.rubricVersion,
+        model: args.model,
+      });
+    }
+    await ctx.db.patch(args.roundId, {
+      status: "revealed",
+      revealedAt: args.revealedAt,
+    });
+    return null;
+  },
+});
+
+export const adjudicateRound = internalAction({
+  args: { roundId: v.id("rounds"), attempt: v.number() },
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> => {
+    const state = await ctx.runQuery(internal.jev.loadRoundState, {
+      roundId: args.roundId,
+    });
+    if (!state) {
+      return null;
+    }
+
     // Distinct canonical forms, first-appearance order.
     const canonicalOrder: string[] = [];
-    for (const answer of answers) {
+    for (const answer of state.answers) {
       if (!canonicalOrder.includes(answer.normalized)) {
         canonicalOrder.push(answer.normalized);
       }
     }
 
     // Retained adjudications for this prompt are the no-reroll cache.
-    const retainedRows = await ctx.db
-      .query("adjudications")
-      .withIndex("by_prompt_pair", (q) => q.eq("promptId", round.promptId))
-      .collect();
     const retained: Record<string, OracleOutcome> = {};
-    for (const row of retainedRows) {
+    for (const row of state.retained) {
       if (retained[row.pairKey] === undefined) {
         retained[row.pairKey] = row.verdict;
       }
@@ -168,12 +282,15 @@ export const adjudicateRound = internalAction({
 
     const nextAttempt = args.attempt + 1;
     const scheduleRetry = async () => {
-      await ctx.db.patch(round._id, { attempts: nextAttempt });
+      await ctx.runMutation(internal.jev.failAttempt, {
+        roundId: args.roundId,
+        attempts: nextAttempt,
+      });
       if (nextAttempt <= MAX_AUTO_RETRIES) {
         await ctx.scheduler.runAfter(
           30_000 * nextAttempt,
           internal.jev.adjudicateRound,
-          { roundId: round._id, attempt: nextAttempt },
+          { roundId: args.roundId, attempt: nextAttempt },
         );
       }
     };
@@ -185,24 +302,22 @@ export const adjudicateRound = internalAction({
 
     if (pending.length > 0) {
       try {
-        const decided = await jevDecisions(prompt.text, pending);
-        for (const decision of decided) {
-          const verdict: OracleOutcome =
-            decision.probability >= MATCH_THRESHOLD ? "match" : "distinct";
-          await ctx.db.insert("adjudications", {
-            promptId: round.promptId,
+        const decided = await jevDecisions(state.promptText, pending);
+        await ctx.runMutation(internal.jev.saveAdjudications, {
+          rows: decided.map((decision) => ({
+            promptId: state.promptId,
             pairKey: decision.key,
             a: decision.a,
             b: decision.b,
-            verdict,
+            verdict:
+              decision.probability >= MATCH_THRESHOLD
+                ? ("match" as const)
+                : ("distinct" as const),
             probability: decision.probability,
-            model: process.env.JEV_MODEL ?? "unknown",
+            model: process.env["JEV_MODEL"] ?? "unknown",
             rubricVersion: EQUIVALENCE_RUBRIC_VERSION,
-          });
-          if (retained[decision.key] === undefined) {
-            retained[decision.key] = verdict;
-          }
-        }
+          })),
+        });
       } catch (error) {
         // Honest outage state: keep the round pending, never fake a judgment,
         // do not consume a player attempt.
@@ -216,7 +331,7 @@ export const adjudicateRound = internalAction({
     }
 
     // All pairs resolved: cluster deterministically with the full verdict map.
-    const clustered: ClusteredAnswer[] = answers.map((answer) => ({
+    const clustered: ClusteredAnswer[] = state.answers.map((answer) => ({
       answerId: answer.playerId,
       playerId: answer.playerId,
       text: answer.text,
@@ -226,46 +341,30 @@ export const adjudicateRound = internalAction({
       retained[pairKey(a, b)] ?? "distinct";
     const result = await clusterAnswers(clustered, oracle, retained);
 
-    const participants = await ctx.db
-      .query("matchParticipants")
-      .withIndex("by_match", (q) => q.eq("matchId", round.matchId))
-      .collect();
-    const playerIds = participants.map((participant) => participant.playerId);
     const scoreMap =
-      game.mode === "soulmate" && game.pairs
+      state.mode === "soulmate" && state.pairs
         ? soulmateRoundScores(
             result.clusters,
-            game.pairs.map((pair) => [pair.a, pair.b] as const),
+            state.pairs.map((pair) => [pair.a, pair.b] as const),
           )
-        : hiveMindRoundScores(result.clusters, playerIds);
+        : hiveMindRoundScores(result.clusters, state.participantIds);
 
-    const existingResult = await ctx.db
-      .query("roundResults")
-      .withIndex("by_round", (q) => q.eq("roundId", round._id))
-      .unique();
-    if (existingResult === null) {
-      await ctx.db.insert("roundResults", {
-        roundId: round._id,
-        clusters: result.clusters.map((cluster) => ({
-          anchor: cluster.anchor,
-          answers: cluster.answers.map((answer) => ({
-            playerId: answer.playerId,
-            text: answer.text,
-            normalized: answer.normalized,
-          })),
+    await ctx.runMutation(internal.jev.saveRoundResult, {
+      roundId: args.roundId,
+      clusters: result.clusters.map((cluster) => ({
+        anchor: cluster.anchor,
+        answers: cluster.answers.map((answer) => ({
+          playerId: answer.playerId as Id<"players">,
+          text: answer.text,
+          normalized: answer.normalized,
         })),
-        scores: [...scoreMap].map(([playerId, points]) => ({
-          playerId,
-          points,
-        })),
-        overrides: [],
-        pendingPairs: result.unresolvedPairs.length,
-        rubricVersion: EQUIVALENCE_RUBRIC_VERSION,
-        model: process.env.JEV_MODEL ?? "unknown",
-      });
-    }
-    await ctx.db.patch(round._id, {
-      status: "revealed",
+      })),
+      scores: [...scoreMap].map(([playerId, points]) => ({
+        playerId: playerId as Id<"players">,
+        points,
+      })),
+      rubricVersion: EQUIVALENCE_RUBRIC_VERSION,
+      model: process.env["JEV_MODEL"] ?? "unknown",
       revealedAt: Date.now(),
     });
     return null;

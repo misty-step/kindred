@@ -28,14 +28,15 @@ export const EQUIVALENCE_RUBRIC_VERSION = 1;
 export const RULES_VERSION = "kindred-rules/1";
 
 export interface AnswerSubmission {
-  answerId: string;
+  answerId?: string;
   playerId: string;
   /** Raw player text. Untrusted data, never instructions. */
   text: string;
 }
 
 export interface ClusteredAnswer {
-  answerId: string;
+  /** Optional caller metadata; the algorithm never reads it. */
+  answerId?: string;
   playerId: string;
   /** Original submitted text, for display only. */
   text: string;

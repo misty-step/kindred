@@ -18,14 +18,18 @@ import {
 } from "../convex/rules.ts";
 
 function scripted(
-  script: Record<string, OracleOutcome>,
+  script: Record<string, string>,
   fallback: OracleOutcome = "distinct",
 ) {
   const asked: string[] = [];
   const oracle = (a: string, b: string): OracleOutcome => {
     const key = pairKey(a, b);
     asked.push(key);
-    return script[key] ?? fallback;
+    const supplied = script[key];
+    if (supplied === "match" || supplied === "distinct" || supplied === "pending") {
+      return supplied;
+    }
+    return fallback;
   };
   return { oracle, asked };
 }

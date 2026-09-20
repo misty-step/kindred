@@ -6,6 +6,7 @@ import {
 } from "@parlor/convex";
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 import { PROMPT_DECK, promptById } from "./prompts";
 import {
@@ -16,14 +17,14 @@ import {
   soulmateRoundScores,
   twoPlayerSessionRecord,
   validateAnswer,
-  type Cluster,
 } from "./rules";
 import { MAX_JEV_ATTEMPTS } from "./jev";
 
 const PARTY_ROUNDS = 5;
 const MAX_PLAYERS = 12;
-
-/** Deterministic server-owned shuffle seeded by the match id. */
+/**
+ * Deterministic server-owned shuffle seeded by the match id.
+ */
 function shuffledPrompts(seed: string, count: number): string[] {
   const ids = PROMPT_DECK.map((prompt) => prompt.id);
   let state = 0x811c9dc5;
@@ -43,23 +44,6 @@ function shuffledPrompts(seed: string, count: number): string[] {
     ids[j] = held;
   }
   return ids.slice(0, Math.min(count, ids.length));
-}
-
-async function requireParticipant(
-  ctx: { db: import("convex/server").QueryCtx["db"] },
-  matchId: import("../convex/_generated/dataModel").Id<"matches">,
-  playerId: import("../convex/_generated/dataModel").Id<"players">,
-) {
-  const participant = await ctx.db
-    .query("matchParticipants")
-    .withIndex("by_match_player", (q) =>
-      q.eq("matchId", matchId).eq("playerId", playerId),
-    )
-    .unique();
-  if (!participant) {
-    throw new ConvexError({ code: "MATCH_PARTICIPANT_REQUIRED" });
-  }
-  return participant;
 }
 
 export const start = mutation({
@@ -128,7 +112,15 @@ export const submitAnswer = mutation({
   handler: async (ctx, args): Promise<null> => {
     const actor = await resolvePlayer(ctx, args.guestToken);
     await requireActiveMatch(ctx, args.matchId, args.roomId);
-    await requireParticipant(ctx, args.matchId, actor.playerId);
+    const participant = await ctx.db
+      .query("matchParticipants")
+      .withIndex("by_match_player", (q) =>
+        q.eq("matchId", args.matchId).eq("playerId", actor.playerId),
+      )
+      .unique();
+    if (!participant) {
+      throw new ConvexError({ code: "MATCH_PARTICIPANT_REQUIRED" });
+    }
     const round = await ctx.db.get(args.roundId);
     if (!round || round.matchId !== args.matchId) {
       throw new ConvexError({ code: "ROUND_NOT_FOUND" });
@@ -186,7 +178,15 @@ export const revealNames = mutation({
   handler: async (ctx, args): Promise<null> => {
     const actor = await resolvePlayer(ctx, args.guestToken);
     await requireActiveMatch(ctx, args.matchId, args.roomId);
-    await requireParticipant(ctx, args.matchId, actor.playerId);
+    const participant = await ctx.db
+      .query("matchParticipants")
+      .withIndex("by_match_player", (q) =>
+        q.eq("matchId", args.matchId).eq("playerId", actor.playerId),
+      )
+      .unique();
+    if (!participant) {
+      throw new ConvexError({ code: "MATCH_PARTICIPANT_REQUIRED" });
+    }
     const round = await ctx.db.get(args.roundId);
     if (!round || round.matchId !== args.matchId) {
       throw new ConvexError({ code: "ROUND_NOT_FOUND" });
@@ -216,7 +216,15 @@ export const claimSharedMemory = mutation({
   handler: async (ctx, args): Promise<null> => {
     const actor = await resolvePlayer(ctx, args.guestToken);
     await requireActiveMatch(ctx, args.matchId, args.roomId);
-    await requireParticipant(ctx, args.matchId, actor.playerId);
+    const participant = await ctx.db
+      .query("matchParticipants")
+      .withIndex("by_match_player", (q) =>
+        q.eq("matchId", args.matchId).eq("playerId", actor.playerId),
+      )
+      .unique();
+    if (!participant) {
+      throw new ConvexError({ code: "MATCH_PARTICIPANT_REQUIRED" });
+    }
     const round = await ctx.db.get(args.roundId);
     if (!round || round.matchId !== args.matchId) {
       throw new ConvexError({ code: "ROUND_NOT_FOUND" });
@@ -231,10 +239,14 @@ export const claimSharedMemory = mutation({
     if (!result) {
       throw new ConvexError({ code: "GAME_NOT_FOUND" });
     }
-    const [first, second] = [actor.playerId, args.withPlayerId].sort();
+    const sortedPair = [actor.playerId, args.withPlayerId].sort();
+    const first = sortedPair[0]!;
+    const second = sortedPair[1]!;
     if (first === second) {
       throw new ConvexError({ code: "OVERRIDE_INVALID_PAIR" });
     }
+    // Convex document ids never contain spaces, so this pair key is
+    // order-independent and collision-free.
     const pairKey = `${first} ${second}`;
     const priorConsent = await ctx.db
       .query("overrideConsents")
@@ -270,8 +282,8 @@ export const claimSharedMemory = mutation({
       return null;
     }
     const merged = applyMutualOverrides(
-      { clusters: result.clusters as Cluster[], verdicts: {}, unresolvedPairs: [] },
-      [{ playerA: first as Cluster["answers"][number]["playerId"], playerB: second as Cluster["answers"][number]["playerId"] }],
+      { clusters: result.clusters, verdicts: {}, unresolvedPairs: [] },
+      [{ playerA: first, playerB: second }],
     );
     const game = await ctx.db.get(round.gameId);
     if (!game) {
@@ -295,12 +307,15 @@ export const claimSharedMemory = mutation({
       clusters: merged.clusters.map((cluster) => ({
         anchor: cluster.anchor,
         answers: cluster.answers.map((answer) => ({
-          playerId: answer.playerId,
+          playerId: answer.playerId as Id<"players">,
           text: answer.text,
           normalized: answer.normalized,
         })),
       })),
-      scores: [...scoreMap].map(([playerId, points]) => ({ playerId, points })),
+      scores: [...scoreMap].map(([playerId, points]) => ({
+        playerId: playerId as Id<"players">,
+        points,
+      })),
       overrides: [...result.overrides, { playerA: first, playerB: second }],
     });
     return null;
@@ -377,19 +392,12 @@ export const advance = mutation({
       ];
       const record = twoPlayerSessionRecord(
         results.map((result) => ({
-          matched: playersShareCluster(
-            result.clusters as Cluster[],
-            a,
-            b,
-          ),
+          matched: playersShareCluster(result.clusters, a, b),
         })),
       );
       await ctx.db.patch(game._id, { sessionRecord: record });
     } else {
-      const totals = new Map<
-        import("../convex/_generated/dataModel").Id<"players">,
-        number
-      >();
+      const totals = new Map<Id<"players">, number>();
       for (const result of results) {
         for (const score of result.scores) {
           totals.set(score.playerId, (totals.get(score.playerId) ?? 0) + score.points);
