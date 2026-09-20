@@ -1,0 +1,3 @@
+packages:
+  - vendor/parlor/packages/*
+  - vendor/parlor/integrations/*

@@ -1,0 +1,21 @@
+{
+  "repository": "https://github.com/misty-step/parlor",
+  "framework": {
+    "installed": true,
+    "path": "vendor/parlor",
+    "revision": "f14c29609dbbeec0682934019a4fc0209402e4c8",
+    "provenance": "vendor/parlor Git HEAD"
+  },
+  "reference": {
+    "path": "skills/parlor/SKILL.md",
+    "revision": "f14c29609dbbeec0682934019a4fc0209402e4c8",
+    "origin": "commit",
+    "differsFromCommit": false,
+    "sha256": "cd8b783b2602bf1c100693d60763e60d70ecb912f82e02781e344404f0ade89a"
+  },
+  "importer": {
+    "path": "scripts/import-skill.mjs",
+    "baseRevision": "f14c29609dbbeec0682934019a4fc0209402e4c8",
+    "sha256": "db37058163d8074b81afcb9b906e9a88bf4d505f36baab8d181cb5a457798f56"
+  }
+}
