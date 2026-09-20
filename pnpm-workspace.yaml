@@ -6,3 +6,4 @@ packages:
 # this key itself on ignored builds).
 allowBuilds:
   esbuild: true
+  workerd: true

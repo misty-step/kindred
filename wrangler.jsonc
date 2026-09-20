@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "kindred",
+  "account_id": "b069014f6a46558ea9146fb6c4ff8f6c",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-09-06",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "send_metrics": false,
+  "observability": { "enabled": true },
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "routes": [
+    {
+      "pattern": "kindred.mistystep.io",
+      "custom_domain": true
+    }
+  ],
+  "vars": {
+    "NEXT_PUBLIC_CONVEX_URL": "https://clear-dalmatian-864.convex.cloud",
+    "NEXT_PUBLIC_CONVEX_SITE_URL": "https://clear-dalmatian-864.convex.site",
+    "PARLOR_GUEST_TOKEN_AUDIENCE": "kindred",
+    "PARLOR_APP_ORIGIN": "https://kindred.mistystep.io"
+  }
+}
