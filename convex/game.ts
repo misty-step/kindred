@@ -14,6 +14,7 @@ import {
   applyMutualOverrides,
   hiveMindRoundScores,
   playersShareCluster,
+  soulmatePairs,
   soulmateRoundScores,
   twoPlayerSessionRecord,
   validateAnswer,
@@ -74,13 +75,9 @@ export const start = mutation({
     const promptIds = shuffledPrompts(match.id, roundCount);
     const pairs =
       args.mode === "soulmate"
-        ? participants
-            .slice(0, participants.length - (participants.length % 2))
-            .map((_, index) => participants[index * 2]!)
-            .map((participant, index) => ({
-              a: participant.playerId,
-              b: participants[index * 2 + 1]!.playerId,
-            }))
+        ? soulmatePairs(participants.map((participant) => participant.playerId)).map(
+            ([a, b]) => ({ a, b }),
+          )
         : undefined;
     const gameId = await ctx.db.insert("games", {
       matchId: match.id,

@@ -329,6 +329,20 @@ export function hiveMindRoundScores(
 export type Pairing = readonly [string, string];
 
 /**
+ * Deterministic Soulmate pairing from seat order: seats 0 and 1 form the
+ * first pair, 2 and 3 the second, and so on. With an odd player the last
+ * seat stays unpaired and cannot score partner points. Never indexes past
+ * the end regardless of count.
+ */
+export function soulmatePairs<T extends string>(playerIds: readonly T[]): (readonly [T, T])[] {
+  const pairs: (readonly [T, T])[] = [];
+  for (let i = 0; i + 1 < playerIds.length; i += 2) {
+    pairs.push([playerIds[i]!, playerIds[i + 1]!] as const);
+  }
+  return pairs;
+}
+
+/**
  * Soulmate party scoring per round:
  * - partner answers in the same equivalent group: SOULMATE_PARTNER_POINTS;
  * - that group contains no player outside the pair:

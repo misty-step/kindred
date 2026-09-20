@@ -10,6 +10,7 @@ import {
   playersShareCluster,
   retainedVerdictsForRetry,
   revealReady,
+  soulmatePairs,
   soulmateRoundScores,
   twoPlayerSessionRecord,
   validateAnswer,
@@ -322,6 +323,17 @@ test("two-player session record counts shared thoughts, not compatibility", () =
   assert.equal(record.record, "shared 5 of 8 thoughts");
   assert.ok(!record.record.includes("%"));
   assert.ok(!record.record.toLowerCase().includes("compat"));
+});
+
+test("soulmatePairs pairs seats in order; odd tail stays unpaired", () => {
+  // Regression: the pre-fix game.ts construction indexed participants past
+  // the end for any count and crashed Soulmate starts with a TypeError.
+  assert.deepEqual(soulmatePairs(["a", "b"]), [["a", "b"]]);
+  assert.deepEqual(soulmatePairs(["a", "b", "c"]), [["a", "b"]]);
+  assert.deepEqual(soulmatePairs(["a", "b", "c", "d"]), [["a", "b"], ["c", "d"]]);
+  assert.deepEqual(soulmatePairs(["a", "b", "c", "d", "e"]), [["a", "b"], ["c", "d"]]);
+  assert.deepEqual(soulmatePairs(["a"]), []);
+  assert.deepEqual(soulmatePairs([]), []);
 });
 
 test("clusterAnswers tolerates empty input", async () => {
