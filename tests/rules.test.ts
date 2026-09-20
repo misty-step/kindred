@@ -10,6 +10,7 @@ import {
   playersShareCluster,
   retainedVerdictsForRetry,
   revealReady,
+  soulmatePairs,
   soulmateRoundScores,
   twoPlayerSessionRecord,
   validateAnswer,
@@ -18,14 +19,18 @@ import {
 } from "../convex/rules.ts";
 
 function scripted(
-  script: Record<string, OracleOutcome>,
+  script: Record<string, string>,
   fallback: OracleOutcome = "distinct",
 ) {
   const asked: string[] = [];
   const oracle = (a: string, b: string): OracleOutcome => {
     const key = pairKey(a, b);
     asked.push(key);
-    return script[key] ?? fallback;
+    const supplied = script[key];
+    if (supplied === "match" || supplied === "distinct" || supplied === "pending") {
+      return supplied;
+    }
+    return fallback;
   };
   return { oracle, asked };
 }
@@ -37,7 +42,12 @@ function sub(playerId: string, text: string): AnswerSubmission {
 test("normalizeAnswer canonicalizes case, spacing, punctuation, unicode", () => {
   assert.equal(normalizeAnswer("  CAR!  "), "car");
   assert.equal(normalizeAnswer("New   York"), "new york");
-  assert.equal(normalizeAnswer("\tThe\tMoon\n"), "the moon");
+  assert.equal(normalizeAnswer("\tThe\tMoon\n"), "moon");
+  assert.equal(normalizeAnswer("A car"), "car");
+  assert.equal(normalizeAnswer("an owl"), "owl");
+  assert.equal(normalizeAnswer("the beatles"), "beatles");
+  assert.equal(normalizeAnswer("a"), "a");
+  assert.equal(normalizeAnswer("The A-Team"), "a-team");
   assert.equal(normalizeAnswer("caf\u00e9"), normalizeAnswer("cafe\u0301"));
   assert.equal(normalizeAnswer("'quoted'"), "quoted");
   assert.equal(normalizeAnswer("...maybe..."), "maybe");
@@ -313,6 +323,17 @@ test("two-player session record counts shared thoughts, not compatibility", () =
   assert.equal(record.record, "shared 5 of 8 thoughts");
   assert.ok(!record.record.includes("%"));
   assert.ok(!record.record.toLowerCase().includes("compat"));
+});
+
+test("soulmatePairs pairs seats in order; odd tail stays unpaired", () => {
+  // Regression: the pre-fix game.ts construction indexed participants past
+  // the end for any count and crashed Soulmate starts with a TypeError.
+  assert.deepEqual(soulmatePairs(["a", "b"]), [["a", "b"]]);
+  assert.deepEqual(soulmatePairs(["a", "b", "c"]), [["a", "b"]]);
+  assert.deepEqual(soulmatePairs(["a", "b", "c", "d"]), [["a", "b"], ["c", "d"]]);
+  assert.deepEqual(soulmatePairs(["a", "b", "c", "d", "e"]), [["a", "b"], ["c", "d"]]);
+  assert.deepEqual(soulmatePairs(["a"]), []);
+  assert.deepEqual(soulmatePairs([]), []);
 });
 
 test("clusterAnswers tolerates empty input", async () => {

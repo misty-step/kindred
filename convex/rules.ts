@@ -23,19 +23,20 @@ export const SOULMATE_UNIQUE_PARTNER_POINTS = 4;
 export const TWO_PLAYER_HOUSE_ANSWER_COUNT = 3;
 
 /** Curated equivalence rubric version. Retained adjudications record it. */
-export const EQUIVALENCE_RUBRIC_VERSION = 1;
+export const EQUIVALENCE_RUBRIC_VERSION = 2;
 /** Bump when clustering or scoring semantics change. */
 export const RULES_VERSION = "kindred-rules/1";
 
 export interface AnswerSubmission {
-  answerId: string;
+  answerId?: string;
   playerId: string;
   /** Raw player text. Untrusted data, never instructions. */
   text: string;
 }
 
 export interface ClusteredAnswer {
-  answerId: string;
+  /** Optional caller metadata; the algorithm never reads it. */
+  answerId?: string;
   playerId: string;
   /** Original submitted text, for display only. */
   text: string;
@@ -103,7 +104,20 @@ export function normalizeAnswer(raw: string): string {
   while (end > start && (edgePunctuation.has(chars[end - 1]!) || chars[end - 1] === " ")) {
     end -= 1;
   }
-  return chars.slice(start, end).join("").replace(/\s+/g, " ").trim();
+  const collapsed = chars.slice(start, end).join("").replace(/\s+/g, " ").trim();
+  // Leading English articles carry no referent: "a car" and "car" are the
+  // same answer and collapse canonically without an oracle call. Strip only
+  // standalone leading words (never letters inside hyphenated or fused
+  // words: "a-b-c", "abe"), and never strip to nothing ("a" stays "a").
+  let stripped = collapsed;
+  for (;;) {
+    const next = stripped.replace(/^(?:a|an|the) (?=\S)/, "");
+    if (next === stripped) {
+      break;
+    }
+    stripped = next;
+  }
+  return stripped;
 }
 
 /** Deterministic, order-independent, collision-free key for an answer pair. */
@@ -154,10 +168,10 @@ export async function clusterAnswers(
   retainedVerdicts: Record<string, OracleOutcome> = {},
 ): Promise<ClusterResult> {
   const answers: ClusteredAnswer[] = submissions.map((s) => ({
-    answerId: s.answerId,
     playerId: s.playerId,
     text: s.text,
     normalized: normalizeAnswer(s.text),
+    ...(s.answerId !== undefined ? { answerId: s.answerId } : {}),
   }));
 
   const verdicts: Record<string, OracleOutcome> = { ...retainedVerdicts };
@@ -313,6 +327,20 @@ export function hiveMindRoundScores(
 
 /** A Soulmate pairing. Both members score from the same match. */
 export type Pairing = readonly [string, string];
+
+/**
+ * Deterministic Soulmate pairing from seat order: seats 0 and 1 form the
+ * first pair, 2 and 3 the second, and so on. With an odd player the last
+ * seat stays unpaired and cannot score partner points. Never indexes past
+ * the end regardless of count.
+ */
+export function soulmatePairs<T extends string>(playerIds: readonly T[]): (readonly [T, T])[] {
+  const pairs: (readonly [T, T])[] = [];
+  for (let i = 0; i + 1 < playerIds.length; i += 2) {
+    pairs.push([playerIds[i]!, playerIds[i + 1]!] as const);
+  }
+  return pairs;
+}
 
 /**
  * Soulmate party scoring per round:
