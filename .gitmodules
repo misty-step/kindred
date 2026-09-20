@@ -1,0 +1,3 @@
+[submodule "vendor/parlor"]
+	path = vendor/parlor
+	url = https://github.com/misty-step/parlor.git

@@ -1,0 +1,11 @@
+{
+  "name": "kindred",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Kindred (Same Brain) — a Parlor-backed shared-thought party game.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/rules.test.ts",
+    "test:all": "node --test tests/"
+  }
+}
