@@ -301,6 +301,15 @@ export const adjudicateRound = internalAction({
             rubricVersion: EQUIVALENCE_RUBRIC_VERSION,
           })),
         });
+        // Freshly adjudicated pairs must join the verdict map used for
+        // clustering in THIS pass. Without this, every new "match" verdict
+        // falls back to the "distinct" default and equivalent answers only
+        // merge after a retry re-reads the retained rows (remote playthrough
+        // caught exactly that: DB verdict match 0.93, UI showed two groups).
+        for (const decision of decided) {
+          retained[decision.key] =
+            decision.probability >= MATCH_THRESHOLD ? "match" : "distinct";
+        }
       } catch (error) {
         // Honest outage state: keep the round pending, never fake a judgment,
         // do not consume a player attempt.
