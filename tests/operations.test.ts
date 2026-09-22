@@ -119,17 +119,26 @@ test("health reports exact attribution only after the Convex backend contract pa
 test("health fails closed without reflecting backend details", async () => {
   const response = await createHealthHandler({
     fetch: (async () =>
-      Response.json({ status: "ok", service: "wrong-secret-backend" })) as typeof fetch,
+      Response.json({
+        status: "ok",
+        service: "wrong-secret-backend",
+      })) as typeof fetch,
     now: () => new Date("2026-09-22T06:00:00.000Z"),
     env: localEnv,
   })();
   assert.equal(response.status, 503);
-  assert.doesNotMatch(JSON.stringify(await response.json()), /wrong|secret|dsn|token/i);
+  assert.doesNotMatch(
+    JSON.stringify(await response.json()),
+    /wrong|secret|dsn|token/i,
+  );
 });
 
 test("operations registration consumes the approved game-operations interface", async () => {
   const registration = JSON.parse(
-    await readFile(new URL("../config/game-operations.json", import.meta.url), "utf8"),
+    await readFile(
+      new URL("../config/game-operations.json", import.meta.url),
+      "utf8",
+    ),
   );
   assert.equal(registration.game, "kindred");
   assert.equal(

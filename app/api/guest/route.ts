@@ -8,7 +8,10 @@ export const dynamic = "force-dynamic";
 const AUDIENCE = "kindred";
 const CONTINUITY_MS = 30 * 24 * 60 * 60_000;
 const COOKIE_DOMAIN = "kindred:guest-continuity:v1\0";
-const RESPONSE_HEADERS = { "Cache-Control": "no-store", Vary: "Origin, Cookie" };
+const RESPONSE_HEADERS = {
+  "Cache-Control": "no-store",
+  Vary: "Origin, Cookie",
+};
 
 type Input = { mode: "acquire" | "refresh"; token?: string };
 type Continuity = {
@@ -89,9 +92,13 @@ function configuration(): Config {
   const cookieSecret = secret(process.env["PARLOR_CONTINUITY_SECRET"]);
   let active: Buffer | undefined;
   for (const [keyId, value] of Object.entries(parsed["keys"])) {
-    if (!/^[A-Za-z0-9_-]{1,64}$/.test(keyId)) fail(503, "GUEST_ISSUER_UNCONFIGURED");
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(keyId))
+      fail(503, "GUEST_ISSUER_UNCONFIGURED");
     const candidate = secret(value);
-    if (candidate.length === cookieSecret.length && timingSafeEqual(candidate, cookieSecret)) {
+    if (
+      candidate.length === cookieSecret.length &&
+      timingSafeEqual(candidate, cookieSecret)
+    ) {
       fail(503, "GUEST_ISSUER_UNCONFIGURED");
     }
     if (keyId === parsed["activeKeyId"]) active = candidate;
@@ -123,10 +130,17 @@ function configuration(): Config {
 }
 
 function signature(payload: string, key: Buffer): Buffer {
-  return createHmac("sha256", key).update(COOKIE_DOMAIN).update(payload).digest();
+  return createHmac("sha256", key)
+    .update(COOKIE_DOMAIN)
+    .update(payload)
+    .digest();
 }
 
-function continuity(request: Request, config: Config, now: number): Continuity | null {
+function continuity(
+  request: Request,
+  config: Config,
+  now: number,
+): Continuity | null {
   const matching = (request.headers.get("cookie") ?? "")
     .split(";")
     .map((part) => part.trim())
@@ -140,7 +154,11 @@ function continuity(request: Request, config: Config, now: number): Continuity |
   const payload = parts[0]!;
   const supplied = decode(parts[1]!);
   const expected = signature(payload, config.cookieSecret);
-  if (!supplied || supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
+  if (
+    !supplied ||
+    supplied.length !== expected.length ||
+    !timingSafeEqual(supplied, expected)
+  ) {
     fail(401, "GUEST_CONTINUITY_INVALID");
   }
   const bytes = decode(payload);
@@ -179,7 +197,10 @@ function continuity(request: Request, config: Config, now: number): Continuity |
 }
 
 async function input(request: Request): Promise<Input> {
-  if (request.headers.get("content-type")?.split(";", 1)[0]?.trim() !== "application/json") {
+  if (
+    request.headers.get("content-type")?.split(";", 1)[0]?.trim() !==
+    "application/json"
+  ) {
     fail(415, "JSON_REQUIRED");
   }
   if (!request.body) fail(400, "INVALID_GUEST_REQUEST");
@@ -231,7 +252,8 @@ async function input(request: Request): Promise<Input> {
 export async function POST(request: Request): Promise<Response> {
   try {
     const config = configuration();
-    if (request.headers.get("origin") !== config.origin) fail(403, "SAME_ORIGIN_REQUIRED");
+    if (request.headers.get("origin") !== config.origin)
+      fail(403, "SAME_ORIGIN_REQUIRED");
     const body = await input(request);
     const now = Date.now();
     let claims = continuity(request, config, now);

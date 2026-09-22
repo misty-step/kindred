@@ -21,7 +21,9 @@ export function Providers({ children }: { children: ReactNode }) {
         <section className="panel status-panel" role="alert">
           <p className="eyebrow">A quiet moment</p>
           <h1>Kindred is resting.</h1>
-          <p>The rooms are unavailable right now. Try again in a little while.</p>
+          <p>
+            The rooms are unavailable right now. Try again in a little while.
+          </p>
         </section>
       </main>
     );

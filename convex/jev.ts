@@ -1,7 +1,11 @@
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
-import { internalAction, internalMutation, internalQuery } from "./_generated/server";
+import {
+  internalAction,
+  internalMutation,
+  internalQuery,
+} from "./_generated/server";
 import { promptById } from "./prompts";
 import {
   EQUIVALENCE_RUBRIC_VERSION,
@@ -86,8 +90,7 @@ async function jevDecisions(
   const byId = answers as Record<string, unknown>;
   return pairs.map((pair, index) => {
     const answer = byId[`pair${index}`] as
-      | { type?: unknown; noul?: unknown }
-      | undefined;
+      { type?: unknown; noul?: unknown } | undefined;
     if (
       !answer ||
       answer.type !== "noul" ||
@@ -204,7 +207,9 @@ export const saveRoundResult = internalMutation({
         ),
       }),
     ),
-    scores: v.array(v.object({ playerId: v.id("players"), points: v.number() })),
+    scores: v.array(
+      v.object({ playerId: v.id("players"), points: v.number() }),
+    ),
     rubricVersion: v.number(),
     model: v.string(),
     revealedAt: v.number(),
@@ -232,7 +237,9 @@ export const saveRoundResult = internalMutation({
       revealedAt: args.revealedAt,
     });
     if (round) {
-      const matched = args.clusters.some((cluster) => cluster.answers.length > 1);
+      const matched = args.clusters.some(
+        (cluster) => cluster.answers.length > 1,
+      );
       const score = args.scores.reduce((sum, row) => sum + row.points, 0);
       await Promise.all([
         ctx.scheduler.runAfter(0, internal.productEvents.emit, {
@@ -240,7 +247,10 @@ export const saveRoundResult = internalMutation({
           eventName: "round_adjudicated",
           occurredAt: args.revealedAt,
           sessionId: round.matchId,
-          props: { round_index: round.index, result: matched ? "matched" : "unmatched" },
+          props: {
+            round_index: round.index,
+            result: matched ? "matched" : "unmatched",
+          },
         }),
         ctx.scheduler.runAfter(0, internal.productEvents.emit, {
           eventId: `${args.roundId}:complete`,

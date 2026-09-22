@@ -16,7 +16,10 @@ export const issueGuest: GuestCredentialIssuer = async (input) => {
   }
   if (!response.ok) {
     const code =
-      typeof body === "object" && body !== null && "code" in body && typeof body.code === "string"
+      typeof body === "object" &&
+      body !== null &&
+      "code" in body &&
+      typeof body.code === "string"
         ? body.code
         : "GUEST_ISSUER_UNAVAILABLE";
     throw new Error(code);

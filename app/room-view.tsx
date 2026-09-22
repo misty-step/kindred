@@ -27,7 +27,15 @@ type Props = {
 
 export function RoomView({ roomId, guestToken, joinUrl, onExit }: Props) {
   const [busy, setBusy] = useState<
-    "start" | "answer" | "reveal" | "advance" | "override" | "retry" | "leave" | "close" | null
+    | "start"
+    | "answer"
+    | "reveal"
+    | "advance"
+    | "override"
+    | "retry"
+    | "leave"
+    | "close"
+    | null
   >(null);
   const [error, setError] = useState("");
   const [confirmClose, setConfirmClose] = useState(false);
@@ -45,7 +53,10 @@ export function RoomView({ roomId, guestToken, joinUrl, onExit }: Props) {
   const heartbeat = useMutation(api.rooms.heartbeat);
   const leaveRoom = useMutation(api.rooms.leaveRoom);
   const closeRoom = useMutation(api.rooms.closeRoom);
-  const room = useQuery(api.game.view, busy === "leave" ? "skip" : { roomId, guestToken });
+  const room = useQuery(
+    api.game.view,
+    busy === "leave" ? "skip" : { roomId, guestToken },
+  );
   const roomOpen = room !== undefined && room.room.closedAt === null;
   const connection = useConvexConnectionState();
   const audio = useAudio();
@@ -97,15 +108,20 @@ export function RoomView({ roomId, guestToken, joinUrl, onExit }: Props) {
     return (
       <section className="panel" aria-busy="true">
         <p role="status">Gathering the room…</p>
-        <ConnectionStatus status={connection.isWebSocketConnected ? "connected" : "connecting"} />
+        <ConnectionStatus
+          status={connection.isWebSocketConnected ? "connected" : "connecting"}
+        />
       </section>
     );
   }
 
   const host = room.room.hostPlayerId === room.viewerPlayerId;
-  const viewer = room.members.find((member) => member.playerId === room.viewerPlayerId);
+  const viewer = room.members.find(
+    (member) => member.playerId === room.viewerPlayerId,
+  );
   const presentCount = room.members.reduce(
-    (count, member) => count + Number(classifyPresence(member, now) === "present"),
+    (count, member) =>
+      count + Number(classifyPresence(member, now) === "present"),
     0,
   );
   const match = room.match;
@@ -121,7 +137,11 @@ export function RoomView({ roomId, guestToken, joinUrl, onExit }: Props) {
           <h2 id="room-heading">
             Room <span className="room-code">{room.room.code}</span>
           </h2>
-          <ConnectionStatus status={connection.isWebSocketConnected ? "connected" : "connecting"} />
+          <ConnectionStatus
+            status={
+              connection.isWebSocketConnected ? "connected" : "connecting"
+            }
+          />
         </header>
         {presence.status === "degraded" && (
           <p className="error" role="status">
@@ -154,7 +174,11 @@ export function RoomView({ roomId, guestToken, joinUrl, onExit }: Props) {
                 <h3 id="match-heading">Choose how to connect.</h3>
                 {host ? (
                   <>
-                    <div className="mode-select" role="group" aria-label="Game mode">
+                    <div
+                      className="mode-select"
+                      role="group"
+                      aria-label="Game mode"
+                    >
                       <button
                         type="button"
                         aria-pressed={mode === "hive-mind"}
@@ -178,7 +202,9 @@ export function RoomView({ roomId, guestToken, joinUrl, onExit }: Props) {
                     <button
                       type="button"
                       disabled={
-                        busy !== null || presentCount < 2 || !connection.isWebSocketConnected
+                        busy !== null ||
+                        presentCount < 2 ||
+                        !connection.isWebSocketConnected
                       }
                       onClick={() => {
                         void run("start", async () => {
@@ -202,13 +228,16 @@ export function RoomView({ roomId, guestToken, joinUrl, onExit }: Props) {
               <>
                 <h3 id="match-heading">You&apos;re watching this match</h3>
                 <p role="status">
-                  This round began before you arrived. You are in for the next one.
+                  This round began before you arrived. You are in for the next
+                  one.
                 </p>
               </>
             ) : match.status === "abandoned" ? (
               <>
                 <h3 id="match-heading">Match ended early</h3>
-                <p role="status">The room can begin again whenever everyone is ready.</p>
+                <p role="status">
+                  The room can begin again whenever everyone is ready.
+                </p>
               </>
             ) : match.status === "completed" ? (
               <>
@@ -222,7 +251,9 @@ export function RoomView({ roomId, guestToken, joinUrl, onExit }: Props) {
                   <ul className="score-list">
                     {match.totals.map((total) => (
                       <li key={total.playerId}>
-                        <span className="player-name">{total.name ?? "Player"}</span>
+                        <span className="player-name">
+                          {total.name ?? "Player"}
+                        </span>
                         <span className="score-points">{total.points} pts</span>
                       </li>
                     ))}
@@ -282,7 +313,9 @@ export function RoomView({ roomId, guestToken, joinUrl, onExit }: Props) {
                           });
                         }}
                       >
-                        <label htmlFor="secret-answer">Your secret answer</label>
+                        <label htmlFor="secret-answer">
+                          Your secret answer
+                        </label>
                         <input
                           id="secret-answer"
                           name="answer"
@@ -292,14 +325,19 @@ export function RoomView({ roomId, guestToken, joinUrl, onExit }: Props) {
                           autoComplete="off"
                           disabled={busy !== null}
                           aria-describedby="answer-help"
-                          onChange={(event) => setDraftAnswer(event.currentTarget.value)}
+                          onChange={(event) =>
+                            setDraftAnswer(event.currentTarget.value)
+                          }
                         />
                         <p id="answer-help" className="hint">
-                          Short and specific. You cannot change it after you send it.
+                          Short and specific. You cannot change it after you
+                          send it.
                         </p>
                         <button
                           type="submit"
-                          disabled={busy !== null || draftAnswer.trim().length === 0}
+                          disabled={
+                            busy !== null || draftAnswer.trim().length === 0
+                          }
                         >
                           {busy === "answer" ? "Locking in…" : "Lock it in"}
                         </button>
@@ -310,7 +348,8 @@ export function RoomView({ roomId, guestToken, joinUrl, onExit }: Props) {
                       </p>
                     )}
                     <p className="waiting-count" role="status">
-                      {round.answerCount} of {round.participantCount} answers are in.
+                      {round.answerCount} of {round.participantCount} answers
+                      are in.
                     </p>
                   </>
                 )}
@@ -319,7 +358,10 @@ export function RoomView({ roomId, guestToken, joinUrl, onExit }: Props) {
                   <div className="pending-panel">
                     <p className="match-number">Everyone answered</p>
                     <h3>Finding the sparks…</h3>
-                    <p role="status">The reveal will begin when every thought has found its place.</p>
+                    <p role="status">
+                      The reveal will begin when every thought has found its
+                      place.
+                    </p>
                     {host && (
                       <button
                         type="button"
@@ -336,7 +378,9 @@ export function RoomView({ roomId, guestToken, joinUrl, onExit }: Props) {
                           });
                         }}
                       >
-                        {busy === "retry" ? "Trying again…" : "Try the reveal again"}
+                        {busy === "retry"
+                          ? "Trying again…"
+                          : "Try the reveal again"}
                       </button>
                     )}
                   </div>
@@ -347,8 +391,9 @@ export function RoomView({ roomId, guestToken, joinUrl, onExit }: Props) {
                     <p className="match-number">Answers first</p>
                     <h3 id="match-heading">See what found its way together.</h3>
                     <p className="reveal-count">
-                      {reveal.clusters.length} {reveal.clusters.length === 1 ? "path" : "paths"}{" "}
-                      through the room
+                      {reveal.clusters.length}{" "}
+                      {reveal.clusters.length === 1 ? "path" : "paths"} through
+                      the room
                     </p>
                     <div className="cluster-list">
                       {reveal.clusters.map((cluster, index) => (
@@ -385,7 +430,9 @@ export function RoomView({ roomId, guestToken, joinUrl, onExit }: Props) {
                         });
                       }}
                     >
-                      {busy === "reveal" ? "Lighting the names…" : "See who thought it"}
+                      {busy === "reveal"
+                        ? "Lighting the names…"
+                        : "See who thought it"}
                     </button>
                   </>
                 )}
@@ -394,7 +441,11 @@ export function RoomView({ roomId, guestToken, joinUrl, onExit }: Props) {
                   <>
                     <p className="match-number">The lights come on</p>
                     <h3 id="match-heading">
-                      {revealHeadline(reveal.clusters.map((cluster) => cluster.answers.length))}
+                      {revealHeadline(
+                        reveal.clusters.map(
+                          (cluster) => cluster.answers.length,
+                        ),
+                      )}
                     </h3>
                     <div className="cluster-list">
                       {reveal.clusters.map((cluster, index) => (
@@ -410,7 +461,11 @@ export function RoomView({ roomId, guestToken, joinUrl, onExit }: Props) {
                             {cluster.answers.map((answer) => (
                               <li key={answer.text} className="answer-chip">
                                 {answer.text}
-                                {answer.name && <span className="chip-name">{answer.name}</span>}
+                                {answer.name && (
+                                  <span className="chip-name">
+                                    {answer.name}
+                                  </span>
+                                )}
                               </li>
                             ))}
                           </ul>
@@ -446,19 +501,25 @@ export function RoomView({ roomId, guestToken, joinUrl, onExit }: Props) {
                             </span>
                           ))}
                         </div>
-                        <p className="house-note">These stayed outside this round.</p>
+                        <p className="house-note">
+                          These stayed outside this round.
+                        </p>
                       </div>
                     )}
                     {match.pairs && (
                       <p className="hint">
-                        Pairs: {match.pairs.map((pair) => `${pair.a} & ${pair.b}`).join(", ")}
+                        Pairs:{" "}
+                        {match.pairs
+                          .map((pair) => `${pair.a} & ${pair.b}`)
+                          .join(", ")}
                       </p>
                     )}
                     {round.participantCount === 2 && (
                       <div className="override-box">
                         <h4>Shared memory</h4>
                         <p className="hint">
-                          If these answers meant the same thing to both of you, say so together.
+                          If these answers meant the same thing to both of you,
+                          say so together.
                         </p>
                         <button
                           type="button"
@@ -466,7 +527,8 @@ export function RoomView({ roomId, guestToken, joinUrl, onExit }: Props) {
                           disabled={busy !== null}
                           onClick={() => {
                             const other = room.members.find(
-                              (member) => member.playerId !== room.viewerPlayerId,
+                              (member) =>
+                                member.playerId !== room.viewerPlayerId,
                             );
                             if (!other) return;
                             void run("override", async () => {
@@ -480,10 +542,14 @@ export function RoomView({ roomId, guestToken, joinUrl, onExit }: Props) {
                             });
                           }}
                         >
-                          {busy === "override" ? "Remembering…" : "We meant the same thing"}
+                          {busy === "override"
+                            ? "Remembering…"
+                            : "We meant the same thing"}
                         </button>
                         {reveal.overrides.length > 0 && (
-                          <p role="status">You both remembered it the same way.</p>
+                          <p role="status">
+                            You both remembered it the same way.
+                          </p>
                         )}
                       </div>
                     )}
@@ -493,7 +559,11 @@ export function RoomView({ roomId, guestToken, joinUrl, onExit }: Props) {
                         disabled={busy !== null}
                         onClick={() => {
                           void run("advance", async () => {
-                            await advance({ roomId, matchId: match.id, guestToken });
+                            await advance({
+                              roomId,
+                              matchId: match.id,
+                              guestToken,
+                            });
                             audio.play("start");
                           });
                         }}
@@ -562,7 +632,8 @@ export function RoomView({ roomId, guestToken, joinUrl, onExit }: Props) {
           </ul>
           {viewer && (
             <p className="identity-details">
-              You are in seat {viewer.seatIndex + 1}. Refresh to return to this room.
+              You are in seat {viewer.seatIndex + 1}. Refresh to return to this
+              room.
             </p>
           )}
         </section>
@@ -597,13 +668,20 @@ export function RoomView({ roomId, guestToken, joinUrl, onExit }: Props) {
             </div>
             {host && (
               <p className="hint">
-                If you leave, another player becomes host. Closing ends the room for everyone.
+                If you leave, another player becomes host. Closing ends the room
+                for everyone.
               </p>
             )}
             {host && confirmClose && (
-              <section className="close-confirmation" aria-labelledby="close-heading">
+              <section
+                className="close-confirmation"
+                aria-labelledby="close-heading"
+              >
                 <h3 id="close-heading">Close this room for everyone?</h3>
-                <p>Any unfinished match will end without a result. This cannot be undone.</p>
+                <p>
+                  Any unfinished match will end without a result. This cannot be
+                  undone.
+                </p>
                 <div className="button-row">
                   <button
                     type="button"

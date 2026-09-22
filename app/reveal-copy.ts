@@ -15,7 +15,8 @@ const NUMBER_WORDS = [
 ] as const;
 
 export function revealHeadline(clusterSizes: readonly number[]): string {
-  if (clusterSizes.length === 0) return "The room is still waiting for the reveal.";
+  if (clusterSizes.length === 0)
+    return "The room is still waiting for the reveal.";
   const largest = Math.max(...clusterSizes);
   if (largest < 2) return "Every thought took its own path.";
   const count = NUMBER_WORDS[largest] ?? String(largest);

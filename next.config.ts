@@ -14,13 +14,19 @@ const clientEnvironment: Record<string, string> = {
   NEXT_PUBLIC_KINDRED_LOCAL: localMode ? "true" : "false",
 };
 if (attribution) {
-  clientEnvironment["NEXT_PUBLIC_PRODUCT_ENVIRONMENT"] = attribution.environment;
+  clientEnvironment["NEXT_PUBLIC_PRODUCT_ENVIRONMENT"] =
+    attribution.environment;
   clientEnvironment["NEXT_PUBLIC_SENTRY_RELEASE"] = attribution.release;
 }
 
 const config: NextConfig = {
   env: clientEnvironment,
-  transpilePackages: ["@parlor/core", "@parlor/auth", "@parlor/react", "@parlor/web"],
+  transpilePackages: [
+    "@parlor/core",
+    "@parlor/auth",
+    "@parlor/react",
+    "@parlor/web",
+  ],
 };
 
 const hasUploadCredentials = Boolean(

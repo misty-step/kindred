@@ -92,7 +92,9 @@ export default defineSchema({
         ),
       }),
     ),
-    scores: v.array(v.object({ playerId: v.id("players"), points: v.number() })),
+    scores: v.array(
+      v.object({ playerId: v.id("players"), points: v.number() }),
+    ),
     overrides: v.array(
       v.object({ playerA: v.id("players"), playerB: v.id("players") }),
     ),

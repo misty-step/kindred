@@ -5,7 +5,10 @@ import test from "node:test";
 const convex = new URL("../convex/", import.meta.url);
 
 test("Convex modules use deployable path components", async () => {
-  const entries = await readdir(convex, { recursive: true, withFileTypes: true });
+  const entries = await readdir(convex, {
+    recursive: true,
+    withFileTypes: true,
+  });
   const invalid = entries
     .filter((entry) => entry.isFile() && /\.[cm]?[jt]sx?$/.test(entry.name))
     .map((entry) => entry.name)

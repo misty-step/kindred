@@ -48,19 +48,27 @@ try {
   const existing = readFileSync(envPath, "utf8");
   const local = parseEnv(existing);
   const deployment = local.CONVEX_DEPLOYMENT;
-  if (!deployment || !/^(dev|local|anonymous):[A-Za-z0-9_-]+$/.test(deployment)) {
+  if (
+    !deployment ||
+    !/^(dev|local|anonymous):[A-Za-z0-9_-]+$/.test(deployment)
+  ) {
     throw new SetupError(
       ".env.local must select an initialized dev:, local: or anonymous: CONVEX_DEPLOYMENT. Production, preview, custom and uninitialized backends are refused.",
     );
   }
   if (
-    selectorOverrides.some((name) => Object.hasOwn(local, name) || Object.hasOwn(process.env, name))
+    selectorOverrides.some(
+      (name) => Object.hasOwn(local, name) || Object.hasOwn(process.env, name),
+    )
   ) {
     throw new SetupError(
       "Remove deploy-key or self-hosted overrides before setup. Only this app's selected dev: or local: backend is allowed; no credentials have been changed.",
     );
   }
-  if (process.env.CONVEX_DEPLOYMENT && process.env.CONVEX_DEPLOYMENT !== deployment) {
+  if (
+    process.env.CONVEX_DEPLOYMENT &&
+    process.env.CONVEX_DEPLOYMENT !== deployment
+  ) {
     throw new SetupError(
       "The shell's CONVEX_DEPLOYMENT disagrees with .env.local. Unset the shell override before setup; no credentials have been changed.",
     );
@@ -90,10 +98,16 @@ try {
       "An anonymous development backend must use a loopback URL. No credentials have been changed.",
     );
   }
-  for (const file of [".env", ".env.development", ".env.development.local", ".env.local"]) {
+  for (const file of [
+    ".env",
+    ".env.development",
+    ".env.development.local",
+    ".env.local",
+  ]) {
     const path = join(root, file);
     if (!existsSync(path)) continue;
-    const values = file === ".env.local" ? local : parseEnv(readFileSync(path, "utf8"));
+    const values =
+      file === ".env.local" ? local : parseEnv(readFileSync(path, "utf8"));
     if (guestNames.some((name) => Object.hasOwn(values, name))) {
       throw new SetupError(
         "Guest configuration already exists. Setup refuses to overwrite or rotate identity keys. If a previous setup stopped partway, keep the saved keys and finish configuring the SAME development backend's environment settings.",
@@ -107,21 +121,28 @@ try {
   }
 
   const require = createRequire(import.meta.url);
-  const cli = join(dirname(require.resolve("convex/package.json")), "bin/main.js");
+  const cli = join(
+    dirname(require.resolve("convex/package.json")),
+    "bin/main.js",
+  );
   const environment = { ...process.env, NO_COLOR: "1" };
   delete environment.FORCE_COLOR;
   // --env-file pins selection to this app instead of ambient shell/workspace env.
   // Output is captured, never replayed: even an unexpected CLI error must not
   // print credentials or submitted stdin into a terminal or a CI log.
   function convex(args, input) {
-    const result = spawnSync(process.execPath, [cli, "env", ...args, "--env-file", envPath], {
-      cwd: root,
-      env: environment,
-      input,
-      encoding: "utf8",
-      stdio: ["pipe", "pipe", "pipe"],
-      timeout: 60_000,
-    });
+    const result = spawnSync(
+      process.execPath,
+      [cli, "env", ...args, "--env-file", envPath],
+      {
+        cwd: root,
+        env: environment,
+        input,
+        encoding: "utf8",
+        stdio: ["pipe", "pipe", "pipe"],
+        timeout: 60_000,
+      },
+    );
     if (result.error || result.status !== 0) {
       throw new SetupError(
         `Convex could not finish ${stage}. Its output was withheld to protect secrets. Check that the selected development backend is running and that your existing Convex login can access it.`,
@@ -166,7 +187,10 @@ try {
       mode: 0o600,
       flag: "wx",
     });
-    if (!lstatSync(envPath).isFile() || readFileSync(envPath, "utf8") !== existing) {
+    if (
+      !lstatSync(envPath).isFile() ||
+      readFileSync(envPath, "utf8") !== existing
+    ) {
       throw new SetupError(
         ".env.local changed during setup. No generated keys were installed. Wait for dev:backend initialization to finish before retrying.",
       );
@@ -184,7 +208,9 @@ try {
     // Omitted CLI value consumes stdin. Never put a secret in argv or use --prod.
     convex(["set", name], values[name]);
   }
-  console.log("Guest configuration saved in kindred/.env.local with mode 0600.");
+  console.log(
+    "Guest configuration saved in kindred/.env.local with mode 0600.",
+  );
   console.log(
     "Only the access key ring and audience were installed on the selected development backend.",
   );

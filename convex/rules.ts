@@ -93,19 +93,44 @@ export function normalizeAnswer(raw: string): string {
   // oxlint-disable-next-line eslint/no-control-regex -- Strip ASCII controls before scoring.
   text = text.replace(/[\u0000-\u001f\u007f]/g, " ");
   const edgePunctuation = new Set([
-    ".", "!", "?", ";", ":", ",", "'", '"', "`",
-    "\u2019", "\u2018", "\u201c", "\u201d", "(", ")", "~", "*",
+    ".",
+    "!",
+    "?",
+    ";",
+    ":",
+    ",",
+    "'",
+    '"',
+    "`",
+    "\u2019",
+    "\u2018",
+    "\u201c",
+    "\u201d",
+    "(",
+    ")",
+    "~",
+    "*",
   ]);
   const chars = [...text];
   let start = 0;
   let end = chars.length;
-  while (start < end && (edgePunctuation.has(chars[start]!) || chars[start] === " ")) {
+  while (
+    start < end &&
+    (edgePunctuation.has(chars[start]!) || chars[start] === " ")
+  ) {
     start += 1;
   }
-  while (end > start && (edgePunctuation.has(chars[end - 1]!) || chars[end - 1] === " ")) {
+  while (
+    end > start &&
+    (edgePunctuation.has(chars[end - 1]!) || chars[end - 1] === " ")
+  ) {
     end -= 1;
   }
-  const collapsed = chars.slice(start, end).join("").replace(/\s+/g, " ").trim();
+  const collapsed = chars
+    .slice(start, end)
+    .join("")
+    .replace(/\s+/g, " ")
+    .trim();
   // Leading English articles carry no referent: "a car" and "car" are the
   // same answer and collapse canonically without an oracle call. Strip only
   // standalone leading words (never letters inside hyphenated or fused
@@ -317,9 +342,7 @@ export function hiveMindRoundScores(
       continue;
     }
     const others = new Set(
-      cluster.answers
-        .map((a) => a.playerId)
-        .filter((p) => p !== playerId),
+      cluster.answers.map((a) => a.playerId).filter((p) => p !== playerId),
     );
     scores.set(playerId, others.size);
   }
@@ -335,7 +358,9 @@ export type Pairing = readonly [string, string];
  * seat stays unpaired and cannot score partner points. Never indexes past
  * the end regardless of count.
  */
-export function soulmatePairs<T extends string>(playerIds: readonly T[]): (readonly [T, T])[] {
+export function soulmatePairs<T extends string>(
+  playerIds: readonly T[],
+): (readonly [T, T])[] {
   const pairs: (readonly [T, T])[] = [];
   for (let i = 0; i + 1 < playerIds.length; i += 2) {
     pairs.push([playerIds[i]!, playerIds[i + 1]!] as const);

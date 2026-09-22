@@ -1,5 +1,8 @@
 import { v } from "convex/values";
-import { buildProductEvent, summarizeKindredEvents } from "./product_event_contract";
+import {
+  buildProductEvent,
+  summarizeKindredEvents,
+} from "./product_event_contract";
 import {
   productEnvironmentValidator,
   productEventNameValidator,
@@ -48,7 +51,11 @@ export const emit = internalMutation({
   returns: v.object({ inserted: v.boolean(), quarantined: v.boolean() }),
   handler: async (ctx, args) => {
     const environment = process.env["PRODUCT_ENVIRONMENT"];
-    if (environment !== "production" && environment !== "staging" && environment !== "test") {
+    if (
+      environment !== "production" &&
+      environment !== "staging" &&
+      environment !== "test"
+    ) {
       await quarantine(ctx, args, "environment-missing-or-invalid");
       return { inserted: false, quarantined: true };
     }
@@ -105,7 +112,9 @@ export async function scheduleRoomEntry(
       .collect(),
   ]);
   if (!player || !member || member.closedAt !== undefined) return;
-  const activeCount = members.filter((candidate) => candidate.closedAt === undefined).length;
+  const activeCount = members.filter(
+    (candidate) => candidate.closedAt === undefined,
+  ).length;
   const now = Date.now();
   await Promise.all([
     ctx.scheduler.runAfter(0, internal.productEvents.emit, {
@@ -163,10 +172,14 @@ export const summary = query({
   handler: async (ctx, args) => {
     const rows = await ctx.db
       .query("productEvents")
-      .withIndex("by_environment_time", (q) => q.eq("environment", args.environment))
+      .withIndex("by_environment_time", (q) =>
+        q.eq("environment", args.environment),
+      )
       .order("desc")
       .take(1_000);
-    const events = rows.map(({ _id: _ignoredId, _creationTime: _ignoredTime, ...event }) => event);
+    const events = rows.map(
+      ({ _id: _ignoredId, _creationTime: _ignoredTime, ...event }) => event,
+    );
     return {
       environment: args.environment,
       sampledEvents: events.length,
@@ -179,9 +192,13 @@ export const summary = query({
 export const quarantineSummary = query({
   args: {},
   handler: async (ctx) => {
-    const rows = await ctx.db.query("productEventQuarantine").order("desc").take(100);
+    const rows = await ctx.db
+      .query("productEventQuarantine")
+      .order("desc")
+      .take(100);
     const reasons: Record<string, number> = {};
-    for (const row of rows) reasons[row.reason] = (reasons[row.reason] ?? 0) + 1;
+    for (const row of rows)
+      reasons[row.reason] = (reasons[row.reason] ?? 0) + 1;
     return { sampled: rows.length, truncated: rows.length === 100, reasons };
   },
 });

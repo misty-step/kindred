@@ -19,11 +19,27 @@ test("brand ships editable square and 16-first optical marks", async () => {
     ["small", small],
     ["favicon", favicon],
   ] as const) {
-    assert.match(svg, /viewBox="0 0 (?:16|64|512) (?:16|64|512)"/, `${name} must be square`);
-    assert.doesNotMatch(svg, /<text\b/i, `${name} must be a non-wordmark symbol`);
+    assert.match(
+      svg,
+      /viewBox="0 0 (?:16|64|512) (?:16|64|512)"/,
+      `${name} must be square`,
+    );
+    assert.doesNotMatch(
+      svg,
+      /<text\b/i,
+      `${name} must be a non-wordmark symbol`,
+    );
   }
-  assert.notEqual(large, small, "16px mark must be an optical variant, not a scaled copy");
-  assert.equal(favicon, small, "served favicon must use the 16-first optical source");
+  assert.notEqual(
+    large,
+    small,
+    "16px mark must be an optical variant, not a scaled copy",
+  );
+  assert.equal(
+    favicon,
+    small,
+    "served favicon must use the 16-first optical source",
+  );
 });
 
 test("share metadata and icons are wired in the root layout", async () => {

@@ -6,7 +6,8 @@ import "@parlor/react/styles.css";
 import "./globals.css";
 import { Providers } from "./providers";
 
-const origin = process.env["NEXT_PUBLIC_APP_URL"] ?? "https://kindred.mistystep.io";
+const origin =
+  process.env["NEXT_PUBLIC_APP_URL"] ?? "https://kindred.mistystep.io";
 
 export const metadata: Metadata = {
   metadataBase: new URL(origin),

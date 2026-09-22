@@ -34,13 +34,5 @@ jobs:
           run_install: false
       - name: Install locked workspace dependencies
         run: pnpm install --frozen-lockfile
-      - name: Build vendored Parlor packages
-        run: pnpm build:parlor
-      - name: Lint
-        run: pnpm lint
-      - name: Typecheck
-        run: pnpm typecheck
-      - name: Deterministic rules suite
-        run: pnpm test
-      - name: Build production application
-        run: pnpm build:app
+      - name: Run canonical checks
+        run: pnpm check

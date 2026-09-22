@@ -3,7 +3,10 @@ import test from "node:test";
 import { clusterLabel, revealHeadline } from "../app/reveal-copy.ts";
 
 test("reveal headline uses the largest actual group", () => {
-  assert.equal(revealHeadline([1, 3, 2]), "Three of you found the same thought.");
+  assert.equal(
+    revealHeadline([1, 3, 2]),
+    "Three of you found the same thought.",
+  );
   assert.equal(revealHeadline([4, 1]), "Four of you found the same thought.");
   assert.equal(revealHeadline([2]), "Two of you found the same thought.");
 });

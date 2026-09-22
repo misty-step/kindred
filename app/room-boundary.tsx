@@ -32,10 +32,17 @@ export class RoomBoundary extends Component<Props, State> {
           <h2>We could not open this room.</h2>
           <p role="alert">{errorMessage(this.state.error)}</p>
           <div className="button-row">
-            <button type="button" onClick={() => this.setState({ error: null })}>
+            <button
+              type="button"
+              onClick={() => this.setState({ error: null })}
+            >
               Retry room
             </button>
-            <button type="button" className="secondary" onClick={this.props.onExit}>
+            <button
+              type="button"
+              className="secondary"
+              onClick={this.props.onExit}
+            >
               Return to lobby
             </button>
           </div>

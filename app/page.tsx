@@ -1,7 +1,12 @@
 "use client";
 
 import { normalizeDisplayName } from "@parlor/core";
-import { RoomCodeInput, normalizeRoomCode, useAudio, useGuestCredential } from "@parlor/react";
+import {
+  RoomCodeInput,
+  normalizeRoomCode,
+  useAudio,
+  useGuestCredential,
+} from "@parlor/react";
 import { useMutation } from "convex/react";
 import { useRef, useState, useSyncExternalStore } from "react";
 import { api } from "../convex/_generated/api";
@@ -22,7 +27,9 @@ function subscribeToStorage(notify: () => void) {
 }
 
 function getInviteCode() {
-  return normalizeRoomCode(new URLSearchParams(window.location.search).get("room") ?? "");
+  return normalizeRoomCode(
+    new URLSearchParams(window.location.search).get("room") ?? "",
+  );
 }
 
 function getRememberedName() {
@@ -38,14 +45,22 @@ function getServerValue() {
 }
 
 export default function Page() {
-  const guest = useGuestCredential({ issuer: issueGuest, autoAcquire: true, storage: null });
+  const guest = useGuestCredential({
+    issuer: issueGuest,
+    autoAcquire: true,
+    storage: null,
+  });
   const [roomId, setRoomId] = useState<Id<"rooms"> | null>(null);
   const rememberedName = useSyncExternalStore(
     subscribeToStorage,
     getRememberedName,
     getServerValue,
   );
-  const inviteCode = useSyncExternalStore(subscribeToNavigation, getInviteCode, getServerValue);
+  const inviteCode = useSyncExternalStore(
+    subscribeToNavigation,
+    getInviteCode,
+    getServerValue,
+  );
   const [editedName, setDisplayName] = useState<string>();
   const [editedCode, setCode] = useState<string>();
   const displayName = editedName ?? rememberedName;
@@ -67,7 +82,10 @@ export default function Page() {
     setError("");
     try {
       const args = { displayName: name.value, guestToken: guest.credential };
-      const result = mode === "create" ? await createRoom(args) : await joinRoom({ ...args, code });
+      const result =
+        mode === "create"
+          ? await createRoom(args)
+          : await joinRoom({ ...args, code });
       if (!("roomId" in result)) {
         throw new Error("code" in result ? result.code : "ROOM_UNAVAILABLE");
       }
@@ -93,7 +111,8 @@ export default function Page() {
   }
 
   function retryGuest() {
-    const request = guest.expiresAt === null ? guest.acquire() : guest.refresh();
+    const request =
+      guest.expiresAt === null ? guest.acquire() : guest.refresh();
     void request.catch(() => {});
   }
 
@@ -130,7 +149,9 @@ export default function Page() {
           }}
         >
           <span aria-hidden="true">{audio.enabled ? "♪" : "♪̸"}</span>
-          <span className="sound-label">{audio.enabled ? "Sound on" : "Sound off"}</span>
+          <span className="sound-label">
+            {audio.enabled ? "Sound on" : "Sound off"}
+          </span>
         </button>
       </header>
 
@@ -150,7 +171,9 @@ export default function Page() {
             <p className="eyebrow">Hold that thought</p>
             <h2>Your place is still here.</h2>
             <p role="status">
-              {guest.loading ? "Reconnecting you…" : "Reconnect to return to the room."}
+              {guest.loading
+                ? "Reconnecting you…"
+                : "Reconnect to return to the room."}
             </p>
             {!guest.loading && (
               <button type="button" onClick={retryGuest}>
@@ -164,20 +187,33 @@ export default function Page() {
           <div className="lobby-intro">
             <p className="eyebrow">Same room. Secret answers.</p>
             <h1 id="lobby-heading">Find the same thought.</h1>
-            <p>Answer in secret, then discover who lit up with the same idea.</p>
+            <p>
+              Answer in secret, then discover who lit up with the same idea.
+            </p>
           </div>
 
           {!guest.credential && (
-            <div className="inline-notice" role={guest.error ? "alert" : "status"}>
+            <div
+              className="inline-notice"
+              role={guest.error ? "alert" : "status"}
+            >
               <span className="status-orbit" aria-hidden="true" />
               <div>
-                <strong>{guest.loading ? "Making space for you…" : "We lost the connection."}</strong>
+                <strong>
+                  {guest.loading
+                    ? "Making space for you…"
+                    : "We lost the connection."}
+                </strong>
                 {guest.error !== null && guest.error !== undefined && (
                   <p>{errorMessage(guest.error)}</p>
                 )}
               </div>
               {!guest.loading && (
-                <button type="button" className="secondary" onClick={retryGuest}>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={retryGuest}
+                >
                   Try again
                 </button>
               )}

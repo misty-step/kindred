@@ -10,7 +10,10 @@ test("product environment is explicit and closed", () => {
   assert.equal(parseProductEnvironment("production"), "production");
   assert.equal(parseProductEnvironment("staging"), "staging");
   assert.equal(parseProductEnvironment("test"), "test");
-  assert.throws(() => parseProductEnvironment(undefined), /PRODUCT_ENVIRONMENT/);
+  assert.throws(
+    () => parseProductEnvironment(undefined),
+    /PRODUCT_ENVIRONMENT/,
+  );
   assert.throws(() => parseProductEnvironment("prod"), /PRODUCT_ENVIRONMENT/);
 });
 
@@ -31,7 +34,16 @@ test("Sentry DSN accepts only public HTTPS project DSNs", () => {
     "https://public-key@errors.example.com/42",
   );
   assert.equal(parseSentryDsn(undefined), null);
-  assert.throws(() => parseSentryDsn("http://public-key@errors.example.com/42"), /SENTRY_DSN/);
-  assert.throws(() => parseSentryDsn("https://errors.example.com/42"), /SENTRY_DSN/);
-  assert.throws(() => parseSentryDsn("https://public-key:secret@errors.example.com/42"), /SENTRY_DSN/);
+  assert.throws(
+    () => parseSentryDsn("http://public-key@errors.example.com/42"),
+    /SENTRY_DSN/,
+  );
+  assert.throws(
+    () => parseSentryDsn("https://errors.example.com/42"),
+    /SENTRY_DSN/,
+  );
+  assert.throws(
+    () => parseSentryDsn("https://public-key:secret@errors.example.com/42"),
+    /SENTRY_DSN/,
+  );
 });

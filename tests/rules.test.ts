@@ -27,7 +27,11 @@ function scripted(
     const key = pairKey(a, b);
     asked.push(key);
     const supplied = script[key];
-    if (supplied === "match" || supplied === "distinct" || supplied === "pending") {
+    if (
+      supplied === "match" ||
+      supplied === "distinct" ||
+      supplied === "pending"
+    ) {
       return supplied;
     }
     return fallback;
@@ -79,12 +83,7 @@ test("validateAnswer enforces non-empty bounded answers", () => {
 test("canonical duplicates collapse without any oracle call", async () => {
   const { oracle, asked } = scripted({});
   const result = await clusterAnswers(
-    [
-      sub("p1", "Car"),
-      sub("p2", "car"),
-      sub("p3", " CAR "),
-      sub("p4", "Car."),
-    ],
+    [sub("p1", "Car"), sub("p2", "car"), sub("p3", " CAR "), sub("p4", "Car.")],
     oracle,
   );
   assert.equal(asked.length, 0);
@@ -114,7 +113,12 @@ test("car matches automobile not bus; goose matches geese not swan", async () =>
   const byAnchor = new Map(
     result.clusters.map((c) => [c.anchor, c.answers.map((a) => a.playerId)]),
   );
-  assert.deepEqual([...byAnchor.keys()].sort(), ["bus", "car", "goose", "swan"]);
+  assert.deepEqual([...byAnchor.keys()].sort(), [
+    "bus",
+    "car",
+    "goose",
+    "swan",
+  ]);
   assert.deepEqual(byAnchor.get("car"), ["p1", "p2"]);
   assert.deepEqual(byAnchor.get("bus"), ["p3"]);
   assert.deepEqual(byAnchor.get("goose"), ["p4", "p5"]);
@@ -175,7 +179,11 @@ test("retained verdicts are reused; duplicate submissions never reroll", async (
   const { oracle: rerollOracle, asked: rerollAsked } = scripted({
     [pairKey("car", "automobile")]: "distinct",
   });
-  const second = await clusterAnswers(submissions, rerollOracle, first.verdicts);
+  const second = await clusterAnswers(
+    submissions,
+    rerollOracle,
+    first.verdicts,
+  );
   assert.equal(rerollAsked.length, 0); // no reroll
   assert.deepEqual(second.clusters, first.clusters);
 });
@@ -223,12 +231,7 @@ test("mutual two-player override merges shared-memory answers", async () => {
 test("Hive Mind party scoring: one point per other player in the group", async () => {
   const { oracle } = scripted({ [pairKey("dog", "puppy")]: "match" });
   const result = await clusterAnswers(
-    [
-      sub("p1", "dog"),
-      sub("p2", "puppy"),
-      sub("p3", "cat"),
-      sub("p5", "dog"),
-    ],
+    [sub("p1", "dog"), sub("p2", "puppy"), sub("p3", "cat"), sub("p5", "dog")],
     oracle,
   );
   const scores = hiveMindRoundScores(result.clusters, [
@@ -330,8 +333,14 @@ test("soulmatePairs pairs seats in order; odd tail stays unpaired", () => {
   // the end for any count and crashed Soulmate starts with a TypeError.
   assert.deepEqual(soulmatePairs(["a", "b"]), [["a", "b"]]);
   assert.deepEqual(soulmatePairs(["a", "b", "c"]), [["a", "b"]]);
-  assert.deepEqual(soulmatePairs(["a", "b", "c", "d"]), [["a", "b"], ["c", "d"]]);
-  assert.deepEqual(soulmatePairs(["a", "b", "c", "d", "e"]), [["a", "b"], ["c", "d"]]);
+  assert.deepEqual(soulmatePairs(["a", "b", "c", "d"]), [
+    ["a", "b"],
+    ["c", "d"],
+  ]);
+  assert.deepEqual(soulmatePairs(["a", "b", "c", "d", "e"]), [
+    ["a", "b"],
+    ["c", "d"],
+  ]);
   assert.deepEqual(soulmatePairs(["a"]), []);
   assert.deepEqual(soulmatePairs([]), []);
 });

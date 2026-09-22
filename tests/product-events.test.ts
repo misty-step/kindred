@@ -49,36 +49,67 @@ test("buildProductEvent accepts typed, content-free measurements", () => {
 });
 
 test("product events require explicit environment and anonymous actors", () => {
-  assert.throws(() => buildProductEvent(event({ environment: undefined })), /environment/);
-  assert.throws(() => buildProductEvent(event({ environment: "prod" })), /environment/);
-  assert.throws(() => buildProductEvent(event({ actorId: "player@example.com" })), /actorId/);
+  assert.throws(
+    () => buildProductEvent(event({ environment: undefined })),
+    /environment/,
+  );
+  assert.throws(
+    () => buildProductEvent(event({ environment: "prod" })),
+    /environment/,
+  );
+  assert.throws(
+    () => buildProductEvent(event({ actorId: "player@example.com" })),
+    /actorId/,
+  );
 });
 
 test("product events reject player content and PII-shaped props", () => {
   assert.throws(
-    () => buildProductEvent(event({ props: { ...event().props, answer: "my secret thought" } })),
+    () =>
+      buildProductEvent(
+        event({ props: { ...event().props, answer: "my secret thought" } }),
+      ),
     /props/,
   );
   assert.throws(
-    () => buildProductEvent(event({ props: { ...event().props, email: "p@example.com" } })),
+    () =>
+      buildProductEvent(
+        event({ props: { ...event().props, email: "p@example.com" } }),
+      ),
     /props/,
   );
   assert.throws(
-    () => buildProductEvent(event({ props: { ...event().props, player_name: "Pat" } })),
+    () =>
+      buildProductEvent(
+        event({ props: { ...event().props, player_name: "Pat" } }),
+      ),
     /props/,
   );
 });
 
 test("event-specific runtime validation rejects malformed measurements", () => {
   assert.throws(
-    () => buildProductEvent(event({ props: { room_players: -1, round_count: 5, game_mode: "hive-mind" } })),
+    () =>
+      buildProductEvent(
+        event({
+          props: { room_players: -1, round_count: 5, game_mode: "hive-mind" },
+        }),
+      ),
     /props/,
   );
   assert.throws(
-    () => buildProductEvent(event({ props: { room_players: 4, round_count: 5, game_mode: "unknown" } })),
+    () =>
+      buildProductEvent(
+        event({
+          props: { room_players: 4, round_count: 5, game_mode: "unknown" },
+        }),
+      ),
     /props/,
   );
-  assert.throws(() => buildProductEvent(event({ occurredAt: "yesterday" })), /occurredAt/);
+  assert.throws(
+    () => buildProductEvent(event({ occurredAt: "yesterday" })),
+    /occurredAt/,
+  );
 });
 
 test("summary excludes test traffic, deduplicates, and exposes replay and failures", () => {
@@ -88,16 +119,28 @@ test("summary excludes test traffic, deduplicates, and exposes replay and failur
     sessionId: string,
     props: Record<string, unknown>,
     env: "production" | "test" = "production",
-  ) => buildProductEvent(event({ eventId, eventName, sessionId, props, environment: env }));
+  ) =>
+    buildProductEvent(
+      event({ eventId, eventName, sessionId, props, environment: env }),
+    );
   const rows = [
     row("event_0001", "match_start", "session_01", {
       room_players: 3,
       round_count: 5,
       game_mode: "hive-mind",
     }),
-    row("event_0002", "answer_submitted", "session_01", { round_index: 0, answer_length: 4 }),
-    row("event_0003", "round_complete", "session_01", { round_index: 0, score: 2 }),
-    row("event_0004", "match_complete", "session_01", { rounds_played: 5, total_score: 8 }),
+    row("event_0002", "answer_submitted", "session_01", {
+      round_index: 0,
+      answer_length: 4,
+    }),
+    row("event_0003", "round_complete", "session_01", {
+      round_index: 0,
+      score: 2,
+    }),
+    row("event_0004", "match_complete", "session_01", {
+      rounds_played: 5,
+      total_score: 8,
+    }),
     row("event_0005", "replay", "session_02", {
       previous_result: "completed",
       game_mode: "hive-mind",
@@ -115,11 +158,17 @@ test("summary excludes test traffic, deduplicates, and exposes replay and failur
       round_count: 5,
       game_mode: "hive-mind",
     }),
-    row("event_test1", "match_start", "session_test", {
-      room_players: 2,
-      round_count: 8,
-      game_mode: "hive-mind",
-    }, "test"),
+    row(
+      "event_test1",
+      "match_start",
+      "session_test",
+      {
+        room_players: 2,
+        round_count: 8,
+        game_mode: "hive-mind",
+      },
+      "test",
+    ),
   ];
 
   assert.deepEqual(summarizeKindredEvents(rows, "production"), {

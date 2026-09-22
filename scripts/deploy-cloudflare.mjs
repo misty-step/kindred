@@ -55,7 +55,10 @@ async function disableOpenNextDebug(directory) {
       if (!entry.name.endsWith(".js") && !entry.name.endsWith(".mjs")) continue;
       const original = await readFile(path, "utf8");
       if (!original.includes("openNextDebug = true")) continue;
-      const next = original.replaceAll("openNextDebug = true", "openNextDebug = false");
+      const next = original.replaceAll(
+        "openNextDebug = true",
+        "openNextDebug = false",
+      );
       if (next.includes("openNextDebug = true")) {
         throw new Error(`${path} still enables OpenNext debug after rewrite.`);
       }

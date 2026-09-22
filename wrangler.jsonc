@@ -11,18 +11,18 @@
   "observability": { "enabled": true },
   "assets": {
     "directory": ".open-next/assets",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
   },
   "routes": [
     {
       "pattern": "kindred.mistystep.io",
-      "custom_domain": true
-    }
+      "custom_domain": true,
+    },
   ],
   "vars": {
     "NEXT_PUBLIC_CONVEX_URL": "https://clear-dalmatian-864.convex.cloud",
     "NEXT_PUBLIC_CONVEX_SITE_URL": "https://clear-dalmatian-864.convex.site",
     "PARLOR_GUEST_TOKEN_AUDIENCE": "kindred",
-    "PARLOR_APP_ORIGIN": "https://kindred.mistystep.io"
-  }
+    "PARLOR_APP_ORIGIN": "https://kindred.mistystep.io",
+  },
 }

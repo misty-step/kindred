@@ -11,7 +11,9 @@ const PRODUCT_ENVIRONMENTS = new Set<ProductEnvironment>([
   "test",
 ]);
 
-export function parseProductEnvironment(value: string | undefined): ProductEnvironment {
+export function parseProductEnvironment(
+  value: string | undefined,
+): ProductEnvironment {
   if (!value || !PRODUCT_ENVIRONMENTS.has(value as ProductEnvironment)) {
     throw new Error(
       "PRODUCT_ENVIRONMENT must be explicit: production, staging, or test.",
@@ -59,14 +61,18 @@ export function parseSentryDsn(value: string | undefined): string | null {
 export function resolveRuntimeAttribution(
   environment: RuntimeEnvironment,
 ): RuntimeAttribution {
-  const productEnvironment = parseProductEnvironment(environment["PRODUCT_ENVIRONMENT"]);
+  const productEnvironment = parseProductEnvironment(
+    environment["PRODUCT_ENVIRONMENT"],
+  );
   const release = parseRelease(environment["SENTRY_RELEASE"]);
   const localRelease =
     productEnvironment === "test" &&
     environment["KINDRED_LOCAL"] === "true" &&
     release === "local";
   if (!localRelease && !/^[0-9a-f]{40}$/i.test(release)) {
-    throw new Error("SENTRY_RELEASE must be the full 40-character candidate commit SHA.");
+    throw new Error(
+      "SENTRY_RELEASE must be the full 40-character candidate commit SHA.",
+    );
   }
   return { environment: productEnvironment, release };
 }

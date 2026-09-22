@@ -76,8 +76,17 @@ async function playRound(
     text: "moon",
   });
   await flush(t);
-  await t.mutation(api.game.revealNames, { roomId, matchId, roundId, guestToken });
-  await t.mutation(api.game.advance, { roomId, matchId, guestToken: hostToken });
+  await t.mutation(api.game.revealNames, {
+    roomId,
+    matchId,
+    roundId,
+    guestToken,
+  });
+  await t.mutation(api.game.advance, {
+    roomId,
+    matchId,
+    guestToken: hostToken,
+  });
   await flush(t);
 }
 
@@ -94,14 +103,22 @@ describe("Kindred lifecycle product events", () => {
     vi.stubEnv("JEV_DECISIONS_URL", "https://judge.test/decisions");
     vi.stubEnv("JEV_MODEL", "fixture/identical-answer-judge");
     vi.stubEnv("OPENROUTER_API_KEY", "fixture-key-not-real");
-    vi.stubGlobal("fetch", vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
-      const body = JSON.parse(String(init?.body)) as { questions: Record<string, unknown> };
-      return Response.json({
-        answers: Object.fromEntries(
-          Object.keys(body.questions).map((name) => [name, { type: "noul", noul: 0.99 }]),
-        ),
-      });
-    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+        const body = JSON.parse(String(init?.body)) as {
+          questions: Record<string, unknown>;
+        };
+        return Response.json({
+          answers: Object.fromEntries(
+            Object.keys(body.questions).map((name) => [
+              name,
+              { type: "noul", noul: 0.99 },
+            ]),
+          ),
+        });
+      }),
+    );
   });
 
   afterEach(() => {
@@ -128,7 +145,10 @@ describe("Kindred lifecycle product events", () => {
       mode: "hive-mind",
     });
     await flush(t);
-    await t.mutation(api.rooms.closeRoom, { roomId: room.roomId, guestToken: hostToken });
+    await t.mutation(api.rooms.closeRoom, {
+      roomId: room.roomId,
+      guestToken: hostToken,
+    });
     await flush(t);
 
     const events = await t.run((ctx) =>
@@ -143,11 +163,17 @@ describe("Kindred lifecycle product events", () => {
     expect(names).toContain("match_complete");
     expect(names).toContain("replay");
     expect(names).toContain("match_abandoned");
-    expect(new Set(events.map((event) => event.eventId)).size).toBe(events.length);
-    expect(events.every((event) => event.environment === "test" && event.actorId === null)).toBe(
-      true,
+    expect(new Set(events.map((event) => event.eventId)).size).toBe(
+      events.length,
     );
-    expect(JSON.stringify(events)).not.toMatch(/Moon|Host|Guest|host-player|guest-player/);
+    expect(
+      events.every(
+        (event) => event.environment === "test" && event.actorId === null,
+      ),
+    ).toBe(true);
+    expect(JSON.stringify(events)).not.toMatch(
+      /Moon|Host|Guest|host-player|guest-player/,
+    );
   });
 
   it("records evaluator failure as a content-free adjudication outcome", async () => {
@@ -169,7 +195,9 @@ describe("Kindred lifecycle product events", () => {
       attempts: 1,
     });
     await flush(t);
-    const events = await t.run((ctx) => ctx.db.query("productEvents").collect());
+    const events = await t.run((ctx) =>
+      ctx.db.query("productEvents").collect(),
+    );
     expect(events).toContainEqual(
       expect.objectContaining({
         eventName: "round_adjudicated",

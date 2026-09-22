@@ -32,7 +32,11 @@ export const productEventPropsValidator = v.union(
   v.object({ round_index: v.number(), answer_length: v.number() }),
   v.object({
     round_index: v.number(),
-    result: v.union(v.literal("matched"), v.literal("unmatched"), v.literal("failed")),
+    result: v.union(
+      v.literal("matched"),
+      v.literal("unmatched"),
+      v.literal("failed"),
+    ),
   }),
   v.object({ round_index: v.number(), score: v.number() }),
   v.object({ rounds_played: v.number(), total_score: v.number() }),

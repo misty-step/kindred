@@ -3,7 +3,10 @@ import { parseSentryDsn, resolveRuntimeAttribution } from "./runtime-config.ts";
 type SentryRuntime = "browser" | "edge" | "server";
 type Environment = Record<string, string | undefined>;
 
-function runtimeEnvironment(environment: Environment, runtime: SentryRuntime): Environment {
+function runtimeEnvironment(
+  environment: Environment,
+  runtime: SentryRuntime,
+): Environment {
   if (runtime !== "browser") return environment;
   return {
     PRODUCT_ENVIRONMENT: environment["NEXT_PUBLIC_PRODUCT_ENVIRONMENT"],
@@ -12,11 +15,16 @@ function runtimeEnvironment(environment: Environment, runtime: SentryRuntime): E
   };
 }
 
-export function resolveSentryOptions(environment: Environment, runtime: SentryRuntime) {
+export function resolveSentryOptions(
+  environment: Environment,
+  runtime: SentryRuntime,
+) {
   let attribution: ReturnType<typeof resolveRuntimeAttribution> | undefined;
   let dsn: string | null = null;
   try {
-    attribution = resolveRuntimeAttribution(runtimeEnvironment(environment, runtime));
+    attribution = resolveRuntimeAttribution(
+      runtimeEnvironment(environment, runtime),
+    );
     dsn = parseSentryDsn(
       runtime === "browser"
         ? environment["NEXT_PUBLIC_SENTRY_DSN"]

@@ -26,7 +26,10 @@ export type ProductEventProps =
     }>
   | Readonly<{ round_index: number; prompt_id: string }>
   | Readonly<{ round_index: number; answer_length: number }>
-  | Readonly<{ round_index: number; result: "matched" | "unmatched" | "failed" }>
+  | Readonly<{
+      round_index: number;
+      result: "matched" | "unmatched" | "failed";
+    }>
   | Readonly<{ round_index: number; score: number }>
   | Readonly<{ rounds_played: number; total_score: number }>
   | Readonly<{
@@ -50,19 +53,29 @@ export type ProductEvent = Readonly<{
   props: ProductEventProps;
 }>;
 
-type Validation = { ok: true; value: ProductEvent } | { ok: false; reason: string };
+type Validation =
+  { ok: true; value: ProductEvent } | { ok: false; reason: string };
 type PropRule = (value: unknown) => boolean;
 
 type EventSpec = Readonly<Record<string, PropRule>>;
 
-const integer = (minimum: number, maximum: number): PropRule =>
-  (value) => Number.isSafeInteger(value) && Number(value) >= minimum && Number(value) <= maximum;
-const number = (minimum: number): PropRule =>
-  (value) => typeof value === "number" && Number.isFinite(value) && value >= minimum;
-const oneOf = (...values: readonly string[]): PropRule =>
-  (value) => typeof value === "string" && values.includes(value);
+const integer =
+  (minimum: number, maximum: number): PropRule =>
+  (value) =>
+    Number.isSafeInteger(value) &&
+    Number(value) >= minimum &&
+    Number(value) <= maximum;
+const number =
+  (minimum: number): PropRule =>
+  (value) =>
+    typeof value === "number" && Number.isFinite(value) && value >= minimum;
+const oneOf =
+  (...values: readonly string[]): PropRule =>
+  (value) =>
+    typeof value === "string" && values.includes(value);
 const identifier: PropRule = (value) =>
-  typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value);
+  typeof value === "string" &&
+  /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value);
 const bool: PropRule = (value) => typeof value === "boolean";
 
 const EVENT_SPECS: Readonly<Record<KindredEventName, EventSpec>> = {
@@ -75,7 +88,10 @@ const EVENT_SPECS: Readonly<Record<KindredEventName, EventSpec>> = {
     game_mode: oneOf("hive-mind", "soulmate"),
   },
   round_start: { round_index: integer(0, 7), prompt_id: identifier },
-  answer_submitted: { round_index: integer(0, 7), answer_length: integer(1, 64) },
+  answer_submitted: {
+    round_index: integer(0, 7),
+    answer_length: integer(1, 64),
+  },
   round_adjudicated: {
     round_index: integer(0, 7),
     result: oneOf("matched", "unmatched", "failed"),
@@ -111,12 +127,18 @@ function isoTimestamp(value: unknown): value is string {
   return Number.isFinite(millis) && new Date(millis).toISOString() === value;
 }
 
-function validProps(name: KindredEventName, value: unknown): value is ProductEventProps {
+function validProps(
+  name: KindredEventName,
+  value: unknown,
+): value is ProductEventProps {
   if (!record(value)) return false;
   const spec = EVENT_SPECS[name];
   const actual = Object.keys(value).sort();
   const expected = Object.keys(spec).sort();
-  if (actual.length !== expected.length || actual.some((key, index) => key !== expected[index])) {
+  if (
+    actual.length !== expected.length ||
+    actual.some((key, index) => key !== expected[index])
+  ) {
     return false;
   }
   return expected.every((key) => spec[key]!(value[key]));
@@ -131,8 +153,10 @@ export function validateProductEvent(input: unknown): Validation {
   ) {
     return { ok: false, reason: "eventName is not in the Kindred contract" };
   }
-  if (!opaqueId(input["eventId"])) return { ok: false, reason: "eventId is invalid" };
-  if (input["game"] !== "kindred") return { ok: false, reason: "game must be kindred" };
+  if (!opaqueId(input["eventId"]))
+    return { ok: false, reason: "eventId is invalid" };
+  if (input["game"] !== "kindred")
+    return { ok: false, reason: "game must be kindred" };
   if (
     input["environment"] !== "production" &&
     input["environment"] !== "staging" &&
@@ -141,12 +165,17 @@ export function validateProductEvent(input: unknown): Validation {
     return { ok: false, reason: "environment must be explicit" };
   }
   if (!isoTimestamp(input["occurredAt"])) {
-    return { ok: false, reason: "occurredAt must be a canonical ISO timestamp" };
+    return {
+      ok: false,
+      reason: "occurredAt must be a canonical ISO timestamp",
+    };
   }
-  if (!opaqueId(input["sessionId"])) return { ok: false, reason: "sessionId is invalid" };
+  if (!opaqueId(input["sessionId"]))
+    return { ok: false, reason: "sessionId is invalid" };
   // Kindred deliberately keeps retention anonymous until it has a rotating,
   // non-joinable actor design. A durable player id never enters analytics.
-  if (input["actorId"] !== null) return { ok: false, reason: "actorId must be null" };
+  if (input["actorId"] !== null)
+    return { ok: false, reason: "actorId must be null" };
   if (input["schemaVersion"] !== PRODUCT_EVENT_SCHEMA_VERSION) {
     return { ok: false, reason: "schemaVersion is unsupported" };
   }
@@ -193,7 +222,8 @@ export function summarizeKindredEvents(
     if (row.eventName === "round_complete") roundsCompleted += 1;
     if (row.eventName === "match_complete") completedMatches.add(row.sessionId);
     if (row.eventName === "replay") replays += 1;
-    if (row.eventName === "match_abandoned") abandonedMatches.add(row.sessionId);
+    if (row.eventName === "match_abandoned")
+      abandonedMatches.add(row.sessionId);
     if (
       row.eventName === "round_adjudicated" &&
       "result" in row.props &&
