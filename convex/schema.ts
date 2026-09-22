@@ -1,6 +1,11 @@
 import { parlorTables } from "@parlor/convex/schema";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import {
+  productEnvironmentValidator,
+  productEventNameValidator,
+  productEventPropsValidator,
+} from "./product-event-validators";
 
 /**
  * Kindred composes application-local Parlor tables with its own game tables.
@@ -104,4 +109,27 @@ export default defineSchema({
   })
     .index("by_round_pair", ["roundId", "pairKey"])
     .index("by_round_player", ["roundId", "playerId"]),
+  /** Versioned, content-free product signals. eventId makes retries idempotent. */
+  productEvents: defineTable({
+    eventId: v.string(),
+    eventName: productEventNameValidator,
+    game: v.literal("kindred"),
+    environment: productEnvironmentValidator,
+    occurredAt: v.string(),
+    sessionId: v.string(),
+    actorId: v.null(),
+    schemaVersion: v.literal(1),
+    props: productEventPropsValidator,
+  })
+    .index("by_event_id", ["eventId"])
+    .index("by_environment_time", ["environment", "occurredAt"]),
+  /** Malformed events are retained without player content for operational triage. */
+  productEventQuarantine: defineTable({
+    eventId: v.string(),
+    eventName: v.string(),
+    occurredAt: v.number(),
+    sessionId: v.string(),
+    reason: v.string(),
+    recordedAt: v.number(),
+  }).index("by_recorded_at", ["recordedAt"]),
 });

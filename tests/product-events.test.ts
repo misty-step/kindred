@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   buildProductEvent,
   KINDRED_EVENT_NAMES,
+  summarizeKindredEvents,
   validateProductEvent,
 } from "../convex/product-event-contract.ts";
 
@@ -78,4 +79,56 @@ test("event-specific runtime validation rejects malformed measurements", () => {
     /props/,
   );
   assert.throws(() => buildProductEvent(event({ occurredAt: "yesterday" })), /occurredAt/);
+});
+
+test("summary excludes test traffic, deduplicates, and exposes replay and failures", () => {
+  const row = (
+    eventId: string,
+    eventName: string,
+    sessionId: string,
+    props: Record<string, unknown>,
+    env: "production" | "test" = "production",
+  ) => buildProductEvent(event({ eventId, eventName, sessionId, props, environment: env }));
+  const rows = [
+    row("event_0001", "match_start", "session_01", {
+      room_players: 3,
+      round_count: 5,
+      game_mode: "hive-mind",
+    }),
+    row("event_0002", "answer_submitted", "session_01", { round_index: 0, answer_length: 4 }),
+    row("event_0003", "round_complete", "session_01", { round_index: 0, score: 2 }),
+    row("event_0004", "match_complete", "session_01", { rounds_played: 5, total_score: 8 }),
+    row("event_0005", "replay", "session_02", {
+      previous_result: "completed",
+      game_mode: "hive-mind",
+    }),
+    row("event_0006", "match_abandoned", "session_03", {
+      rounds_completed: 2,
+      reason: "everyone-away",
+    }),
+    row("event_0007", "round_adjudicated", "session_03", {
+      round_index: 2,
+      result: "failed",
+    }),
+    row("event_0001", "match_start", "session_01", {
+      room_players: 3,
+      round_count: 5,
+      game_mode: "hive-mind",
+    }),
+    row("event_test1", "match_start", "session_test", {
+      room_players: 2,
+      round_count: 8,
+      game_mode: "hive-mind",
+    }, "test"),
+  ];
+
+  assert.deepEqual(summarizeKindredEvents(rows, "production"), {
+    sessionsStarted: 1,
+    sessionsEngaged: 1,
+    roundsCompleted: 1,
+    matchesCompleted: 1,
+    replays: 1,
+    abandonments: 1,
+    evaluatorFailures: 1,
+  });
 });
