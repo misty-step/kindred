@@ -5,5 +5,41 @@ packages:
 # pnpm 11 build approvals (Poppycock convention; pnpm 11.25 scaffolds
 # this key itself on ignored builds).
 allowBuilds:
+  "@sentry/cli": true
   esbuild: true
   workerd: true
+
+minimumReleaseAgeExclude:
+  - "@sentry/browser-utils@10.75.1"
+  - "@sentry/browser@10.75.1"
+  - "@sentry/core@10.75.1"
+  - "@sentry/feedback@10.75.1"
+  - "@sentry/nextjs@10.75.1"
+  - "@sentry/node-core@10.75.1"
+  - "@sentry/node@10.75.1"
+  - "@sentry/opentelemetry@10.75.1"
+  - "@sentry/react@10.75.1"
+  - "@sentry/replay-canvas@10.75.1"
+  - "@sentry/replay@10.75.1"
+  - "@sentry/server-utils@10.75.1"
+  - "@sentry/vercel-edge@10.75.1"
+  - "@oxlint/binding-android-arm-eabi@1.85.0"
+  - "@oxlint/binding-android-arm64@1.85.0"
+  - "@oxlint/binding-darwin-arm64@1.85.0"
+  - "@oxlint/binding-darwin-x64@1.85.0"
+  - "@oxlint/binding-freebsd-x64@1.85.0"
+  - "@oxlint/binding-linux-arm-gnueabihf@1.85.0"
+  - "@oxlint/binding-linux-arm-musleabihf@1.85.0"
+  - "@oxlint/binding-linux-arm64-gnu@1.85.0"
+  - "@oxlint/binding-linux-arm64-musl@1.85.0"
+  - "@oxlint/binding-linux-ppc64-gnu@1.85.0"
+  - "@oxlint/binding-linux-riscv64-gnu@1.85.0"
+  - "@oxlint/binding-linux-riscv64-musl@1.85.0"
+  - "@oxlint/binding-linux-s390x-gnu@1.85.0"
+  - "@oxlint/binding-linux-x64-gnu@1.85.0"
+  - "@oxlint/binding-linux-x64-musl@1.85.0"
+  - "@oxlint/binding-openharmony-arm64@1.85.0"
+  - "@oxlint/binding-win32-arm64-msvc@1.85.0"
+  - "@oxlint/binding-win32-ia32-msvc@1.85.0"
+  - "@oxlint/binding-win32-x64-msvc@1.85.0"
+  - oxlint@1.85.0

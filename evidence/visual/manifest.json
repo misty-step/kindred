@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "title": "Kindred Fireflies · production-build visual QA",
+  "capturedAt": "2026-09-22T08:02:37Z",
+  "target": {
+    "kind": "task-owned remote QA VM",
+    "host": "kindred-qa-t5794ad8a.exe.xyz",
+    "application": "Next.js production build",
+    "backend": "isolated local Convex runtime"
+  },
+  "fixture": {
+    "label": "FIXTURE ONLY: local identical-answer judge",
+    "productionOutcome": false,
+    "purpose": "Deterministic UI and lifecycle validation; not external evaluator quality evidence."
+  },
+  "inspection": {
+    "status": "passed",
+    "method": "native subscription vision review plus runtime overflow assertions",
+    "findings": [
+      "Desktop and 390px mobile lobby layouts have no horizontal overflow or clipping.",
+      "Loading and recoverable guest-error states are readable; retry and complete form remain visible.",
+      "Anonymous Hive Mind reveal hides answer attribution until the reveal action.",
+      "Named Soulmate reveal preserves names, scores, and touch-safe mobile stacking.",
+      "Host-transfer and final-record panels retain symmetric padding after mobile-to-desktop resize.",
+      "The lobby-only privacy footer is absent inside rooms.",
+      "Purpose-built 16px icon, rendered 32px favicon, and editable 256px mark are fully visible and recognizable."
+    ],
+    "contrastEvidence": "../raw/contrast-check.log"
+  },
+  "screenshots": [
+    {
+      "file": "01-desktop-lobby.png",
+      "viewport": "1440x1000",
+      "state": "lobby",
+      "status": "passed"
+    },
+    {
+      "file": "02-mobile-lobby.png",
+      "viewport": "390x844",
+      "state": "mobile lobby",
+      "status": "passed"
+    },
+    {
+      "file": "03-desktop-loading.png",
+      "viewport": "1440x1000",
+      "state": "guest session loading",
+      "status": "passed"
+    },
+    {
+      "file": "04-mobile-error.png",
+      "viewport": "390x844 full-page",
+      "state": "recoverable guest issuer error",
+      "status": "passed"
+    },
+    {
+      "file": "05-desktop-anonymous-reveal.png",
+      "viewport": "1440x1000 full-page",
+      "state": "anonymous first reveal",
+      "status": "passed"
+    },
+    {
+      "file": "06-mobile-named-reveal.png",
+      "viewport": "390x844 full-page",
+      "state": "named reveal and scoring",
+      "status": "passed"
+    },
+    {
+      "file": "07-desktop-host-transfer.png",
+      "viewport": "1440x1000 full-page",
+      "state": "host transfer after original host leaves",
+      "status": "passed"
+    },
+    {
+      "file": "08-desktop-final-record.png",
+      "viewport": "1440x1000 full-page",
+      "state": "completed replay and final record",
+      "status": "passed"
+    },
+    {
+      "file": "09-icon-optics.png",
+      "viewport": "1200x600",
+      "state": "actual 16px, 32px, and editable 256px brand assets",
+      "status": "passed"
+    }
+  ]
+}

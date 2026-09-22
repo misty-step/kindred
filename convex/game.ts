@@ -56,6 +56,11 @@ export const start = mutation({
   returns: v.id("matches"),
   handler: async (ctx, args) => {
     const actor = await resolvePlayer(ctx, args.guestToken);
+    const previousMatch = await ctx.db
+      .query("matches")
+      .withIndex("by_room_cycle", (q) => q.eq("roomId", args.roomId))
+      .order("desc")
+      .first();
     const match = await beginMatch(ctx, {
       roomId: args.roomId,
       actor,
@@ -75,9 +80,9 @@ export const start = mutation({
     const promptIds = shuffledPrompts(match.id, roundCount);
     const pairs =
       args.mode === "soulmate"
-        ? soulmatePairs(participants.map((participant) => participant.playerId)).map(
-            ([a, b]) => ({ a, b }),
-          )
+        ? soulmatePairs(
+            participants.map((participant) => participant.playerId),
+          ).map(([a, b]) => ({ a, b }))
         : undefined;
     const gameId = await ctx.db.insert("games", {
       matchId: match.id,
@@ -85,7 +90,7 @@ export const start = mutation({
       promptIds,
       ...(pairs !== undefined ? { pairs } : {}),
     });
-    await ctx.db.insert("rounds", {
+    const roundId = await ctx.db.insert("rounds", {
       gameId,
       matchId: match.id,
       index: 0,
@@ -93,6 +98,44 @@ export const start = mutation({
       status: "answering",
       attempts: 0,
     });
+    const eventTasks = [
+      ctx.scheduler.runAfter(0, internal.productEvents.emit, {
+        eventId: `${match.id}:start`,
+        eventName: "match_start" as const,
+        occurredAt: match.startedAt,
+        sessionId: match.id,
+        props: {
+          room_players: participants.length,
+          round_count: promptIds.length,
+          game_mode: args.mode,
+        },
+      }),
+      ctx.scheduler.runAfter(0, internal.productEvents.emit, {
+        eventId: `${roundId}:start`,
+        eventName: "round_start" as const,
+        occurredAt: match.startedAt,
+        sessionId: match.id,
+        props: { round_index: 0, prompt_id: promptIds[0]! },
+      }),
+    ];
+    if (
+      previousMatch?.status === "completed" ||
+      previousMatch?.status === "abandoned"
+    ) {
+      eventTasks.push(
+        ctx.scheduler.runAfter(0, internal.productEvents.emit, {
+          eventId: `${match.id}:replay`,
+          eventName: "replay" as const,
+          occurredAt: match.startedAt,
+          sessionId: match.id,
+          props: {
+            previous_result: previousMatch.status,
+            game_mode: args.mode,
+          },
+        }),
+      );
+    }
+    await Promise.all(eventTasks);
     return match.id;
   },
 });
@@ -138,7 +181,7 @@ export const submitAnswer = mutation({
     if (!validation.ok) {
       throw new ConvexError({ code: validation.code });
     }
-    await ctx.db.insert("answers", {
+    const answerId = await ctx.db.insert("answers", {
       roundId: round._id,
       playerId: actor.playerId,
       text: args.text.trim(),
@@ -152,6 +195,16 @@ export const submitAnswer = mutation({
       .query("matchParticipants")
       .withIndex("by_match", (q) => q.eq("matchId", args.matchId))
       .collect();
+    await ctx.scheduler.runAfter(0, internal.productEvents.emit, {
+      eventId: `${answerId}:submitted`,
+      eventName: "answer_submitted",
+      occurredAt: Date.now(),
+      sessionId: args.matchId,
+      props: {
+        round_index: round.index,
+        answer_length: validation.normalized.length,
+      },
+    });
     if (answers.length >= participants.length) {
       await ctx.db.patch(round._id, { status: "adjudicating" });
       await ctx.scheduler.runAfter(0, internal.jev.adjudicateRound, {
@@ -266,7 +319,9 @@ export const claimSharedMemory = mutation({
         q.eq("roundId", round._id).eq("pairKey", pairKey),
       )
       .collect();
-    const distinctPlayers = new Set(consents.map((consent) => consent.playerId));
+    const distinctPlayers = new Set(
+      consents.map((consent) => consent.playerId),
+    );
     if (distinctPlayers.size < 2) {
       return null; // Waiting for the other player's consent.
     }
@@ -351,13 +406,23 @@ export const advance = mutation({
     }
     const nextIndex = round.index + 1;
     if (nextIndex < game.promptIds.length) {
-      await ctx.db.insert("rounds", {
+      const nextRoundId = await ctx.db.insert("rounds", {
         gameId: game._id,
         matchId: args.matchId,
         index: nextIndex,
         promptId: game.promptIds[nextIndex]!,
         status: "answering",
         attempts: 0,
+      });
+      await ctx.scheduler.runAfter(0, internal.productEvents.emit, {
+        eventId: `${nextRoundId}:start`,
+        eventName: "round_start",
+        occurredAt: Date.now(),
+        sessionId: args.matchId,
+        props: {
+          round_index: nextIndex,
+          prompt_id: game.promptIds[nextIndex]!,
+        },
       });
       return null;
     }
@@ -383,10 +448,7 @@ export const advance = mutation({
       .collect();
     if (game.mode === "hive-mind" && participants.length === 2) {
       // Session record, not a compatibility score.
-      const [a, b] = [
-        participants[0]!.playerId,
-        participants[1]!.playerId,
-      ];
+      const [a, b] = [participants[0]!.playerId, participants[1]!.playerId];
       const record = twoPlayerSessionRecord(
         results.map((result) => ({
           matched: playersShareCluster(result.clusters, a, b),
@@ -397,7 +459,10 @@ export const advance = mutation({
       const totals = new Map<Id<"players">, number>();
       for (const result of results) {
         for (const score of result.scores) {
-          totals.set(score.playerId, (totals.get(score.playerId) ?? 0) + score.points);
+          totals.set(
+            score.playerId,
+            (totals.get(score.playerId) ?? 0) + score.points,
+          );
         }
       }
       await ctx.db.patch(game._id, {
@@ -407,6 +472,19 @@ export const advance = mutation({
       });
     }
     await completeMatch(ctx, { matchId: args.matchId, actor });
+    const totalScore = results.reduce(
+      (sum, result) =>
+        sum +
+        result.scores.reduce((roundSum, score) => roundSum + score.points, 0),
+      0,
+    );
+    await ctx.scheduler.runAfter(0, internal.productEvents.emit, {
+      eventId: `${args.matchId}:complete`,
+      eventName: "match_complete",
+      occurredAt: Date.now(),
+      sessionId: args.matchId,
+      props: { rounds_played: rounds.length, total_score: totalScore },
+    });
     return null;
   },
 });
@@ -605,10 +683,8 @@ export const view = query({
           answerCount,
           participantCount: participants.length,
           houseAnswers:
-            game.mode === "soulmate" &&
-            participants.length === 2 &&
-            revealed
-              ? prompt?.houseAnswers ?? []
+            game.mode === "soulmate" && participants.length === 2 && revealed
+              ? (prompt?.houseAnswers ?? [])
               : null,
         },
         reveal: projected,

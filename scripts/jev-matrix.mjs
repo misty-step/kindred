@@ -32,8 +32,18 @@ const REQUEST_TIMEOUT_MS = 15_000;
  * rubric v1. Expected outcomes are assertions, never inputs to the model.
  */
 const MATRIX = [
-  { promptId: "road-trip-vehicle", a: "car", b: "automobile", expected: "match" },
-  { promptId: "road-trip-vehicle", a: "a car", b: "the car", expected: "match" },
+  {
+    promptId: "road-trip-vehicle",
+    a: "car",
+    b: "automobile",
+    expected: "match",
+  },
+  {
+    promptId: "road-trip-vehicle",
+    a: "a car",
+    b: "the car",
+    expected: "match",
+  },
   { promptId: "road-trip-vehicle", a: "car", b: "bus", expected: "distinct" },
   { promptId: "park-birds", a: "goose", b: "geese", expected: "match" },
   { promptId: "park-birds", a: "duck", b: "ducks", expected: "match" },
@@ -135,7 +145,9 @@ for (const promptId of promptIds) {
 }
 
 const misses = results.filter((row) => !row.ok);
-console.log(`summary: ${results.length - misses.length}/${results.length} expectations met`);
+console.log(
+  `summary: ${results.length - misses.length}/${results.length} expectations met`,
+);
 if (misses.length > 0) {
   console.log(`misses: ${misses.map((row) => `${row.a}~${row.b}`).join(", ")}`);
 }

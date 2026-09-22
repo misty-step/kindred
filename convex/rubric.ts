@@ -47,8 +47,7 @@ export function equivalenceNoul(
         "Two players each answered the prompt `prompt` with one short secret answer. Do `answer_a` and `answer_b` name the same specific thing, person, or idea — the same answer, just worded differently?",
     },
     criteria: {
-      true:
-        "Both answers name the same specific thing. Synonyms and word variants count: sofa and couch, television and TV, kid and child, whisky and whiskey. Word choice never matters, only the referent.",
+      true: "Both answers name the same specific thing. Synonyms and word variants count: sofa and couch, television and TV, kid and child, whisky and whiskey. Word choice never matters, only the referent.",
       false:
         "The answers name different things, even closely related ones or members of the same category: sofa and chair, coffee and tea, dog and puppy. A near miss is still a different answer.",
     },

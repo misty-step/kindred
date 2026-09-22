@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title description">
+  <title id="title">Kindred — find the same thought</title>
+  <desc id="description">Two glowing fireflies meet across a curved trail in a deep blue night.</desc>
+  <defs>
+    <linearGradient id="night" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#090e22"/>
+      <stop offset="0.55" stop-color="#111a3a"/>
+      <stop offset="1" stop-color="#172650"/>
+    </linearGradient>
+    <radialGradient id="amber" cx="35%" cy="30%" r="70%">
+      <stop offset="0" stop-color="#fff7d5"/>
+      <stop offset="0.38" stop-color="#ffd36f"/>
+      <stop offset="1" stop-color="#e89b2d"/>
+    </radialGradient>
+    <radialGradient id="teal" cx="35%" cy="30%" r="70%">
+      <stop offset="0" stop-color="#e8fffb"/>
+      <stop offset="0.38" stop-color="#76e6d6"/>
+      <stop offset="1" stop-color="#269d98"/>
+    </radialGradient>
+    <radialGradient id="haze" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#4f65a5" stop-opacity=".42"/>
+      <stop offset="1" stop-color="#4f65a5" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft-glow" x="-180%" y="-180%" width="460%" height="460%">
+      <feGaussianBlur stdDeviation="30"/>
+    </filter>
+    <filter id="small-glow" x="-160%" y="-160%" width="420%" height="420%">
+      <feGaussianBlur stdDeviation="12"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#night)"/>
+  <circle cx="1060" cy="65" r="360" fill="url(#haze)" opacity=".62"/>
+  <circle cx="152" cy="606" r="280" fill="url(#haze)" opacity=".28"/>
+
+  <g fill="#d9fff8" opacity=".34">
+    <circle cx="84" cy="102" r="2"/>
+    <circle cx="270" cy="82" r="1.6"/>
+    <circle cx="497" cy="115" r="2.2"/>
+    <circle cx="682" cy="73" r="1.5"/>
+    <circle cx="1107" cy="158" r="2"/>
+    <circle cx="1020" cy="540" r="1.8"/>
+    <circle cx="755" cy="564" r="1.5"/>
+    <circle cx="455" cy="526" r="1.8"/>
+    <circle cx="176" cy="492" r="1.4"/>
+  </g>
+
+  <g transform="translate(72 152)">
+    <text x="0" y="102" fill="#fff7e7" font-family="DejaVu Serif, Georgia, serif" font-size="112" font-weight="600" letter-spacing="-3">Kindred</text>
+    <text x="5" y="170" fill="#d7ddf3" font-family="DejaVu Sans, sans-serif" font-size="32" font-weight="400" letter-spacing=".6">Find the same thought.</text>
+    <path d="M7 214h210" stroke="#f6b84a" stroke-width="4" stroke-linecap="round" opacity=".82"/>
+    <text x="5" y="272" fill="#9faad0" font-family="DejaVu Sans, sans-serif" font-size="24" font-weight="400">Answer in secret. Discover who thought like you.</text>
+  </g>
+
+  <g>
+    <path d="M672 475C758 251 922 168 1110 188" fill="none" stroke="#fff4cf" stroke-opacity=".18" stroke-width="56" stroke-linecap="round" filter="url(#small-glow)"/>
+    <path d="M672 475C758 251 922 168 1110 188" fill="none" stroke="#f8efd3" stroke-opacity=".76" stroke-width="22" stroke-linecap="round"/>
+    <path d="M691 468C796 430 885 340 932 241" fill="none" stroke="#0b1026" stroke-opacity=".42" stroke-width="7" stroke-linecap="round"/>
+
+    <circle cx="717" cy="432" r="88" fill="#f6b84a" opacity=".18" filter="url(#soft-glow)"/>
+    <circle cx="1040" cy="190" r="88" fill="#59d6c7" opacity=".18" filter="url(#soft-glow)"/>
+    <circle cx="717" cy="432" r="48" fill="url(#amber)"/>
+    <circle cx="1040" cy="190" r="48" fill="url(#teal)"/>
+    <circle cx="702" cy="417" r="11" fill="#fff" opacity=".72"/>
+    <circle cx="1025" cy="175" r="11" fill="#fff" opacity=".72"/>
+  </g>
+
+  <rect x="1.5" y="1.5" width="1197" height="627" rx="30" fill="none" stroke="#fff" stroke-opacity=".08" stroke-width="3"/>
+</svg>

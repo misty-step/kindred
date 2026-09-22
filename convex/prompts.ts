@@ -24,7 +24,11 @@ export const PROMPT_DECK: Prompt[] = [
     id: "dream-breakfast",
     text: "Your dream breakfast",
     category: "ordinary",
-    houseAnswers: ["cold pizza", "anything someone else made", "coffee, technically"],
+    houseAnswers: [
+      "cold pizza",
+      "anything someone else made",
+      "coffee, technically",
+    ],
   },
   {
     id: "childhood-smell",
@@ -36,7 +40,11 @@ export const PROMPT_DECK: Prompt[] = [
     id: "useless-superpower",
     text: "A completely useless superpower",
     category: "unusual",
-    houseAnswers: ["talking to pigeons", "instant sock sorting", "perfect parking on Tuesdays"],
+    houseAnswers: [
+      "talking to pigeons",
+      "instant sock sorting",
+      "perfect parking on Tuesdays",
+    ],
   },
   {
     id: "sunday-sound",
@@ -54,25 +62,41 @@ export const PROMPT_DECK: Prompt[] = [
     id: "awkward-elevator",
     text: "How to survive an awkward elevator ride",
     category: "unusual",
-    houseAnswers: ["fake phone call", "stare at the numbers", "compliment shoes"],
+    houseAnswers: [
+      "fake phone call",
+      "stare at the numbers",
+      "compliment shoes",
+    ],
   },
   {
     id: "best-feeling",
     text: "The best feeling in the world",
     category: "ordinary",
-    houseAnswers: ["clean sheets", "being early", "the last slice left for you"],
+    houseAnswers: [
+      "clean sheets",
+      "being early",
+      "the last slice left for you",
+    ],
   },
   {
     id: "ghost-roommate",
     text: "One rule for your ghost roommate",
     category: "unusual",
-    houseAnswers: ["no humming at 3 a.m.", "dishes get done", "lights stay off"],
+    houseAnswers: [
+      "no humming at 3 a.m.",
+      "dishes get done",
+      "lights stay off",
+    ],
   },
   {
     id: "karaoke-go-to",
     text: "Your secret karaoke go-to",
     category: "ordinary",
-    houseAnswers: ["something by ABBA", "a power ballad", "whatever the room shouts"],
+    houseAnswers: [
+      "something by ABBA",
+      "a power ballad",
+      "whatever the room shouts",
+    ],
   },
   {
     id: "time-travel-errand",
@@ -84,19 +108,31 @@ export const PROMPT_DECK: Prompt[] = [
     id: "comfort-movie",
     text: "The movie you can always rewatch",
     category: "ordinary",
-    houseAnswers: ["something dumb and fun", "the long one with wizards", "a documentary, honestly"],
+    houseAnswers: [
+      "something dumb and fun",
+      "the long one with wizards",
+      "a documentary, honestly",
+    ],
   },
   {
     id: "road-trip-vehicle",
     text: "Your ideal road trip vehicle",
     category: "ordinary",
-    houseAnswers: ["whatever runs", "a van you can sleep in", "a bus, honestly"],
+    houseAnswers: [
+      "whatever runs",
+      "a van you can sleep in",
+      "a bus, honestly",
+    ],
   },
   {
     id: "park-birds",
     text: "Birds you'd feed at the park",
     category: "unusual",
-    houseAnswers: ["the pigeons, obviously", "swans (risky)", "ducks, no negotiation"],
+    houseAnswers: [
+      "the pigeons, obviously",
+      "swans (risky)",
+      "ducks, no negotiation",
+    ],
   },
 ];
 

@@ -1,7 +1,12 @@
 "use client";
 
 import { normalizeDisplayName } from "@parlor/core";
-import { RoomCodeInput, normalizeRoomCode, useAudio, useGuestCredential } from "@parlor/react";
+import {
+  RoomCodeInput,
+  normalizeRoomCode,
+  useAudio,
+  useGuestCredential,
+} from "@parlor/react";
 import { useMutation } from "convex/react";
 import { useRef, useState, useSyncExternalStore } from "react";
 import { api } from "../convex/_generated/api";
@@ -22,7 +27,9 @@ function subscribeToStorage(notify: () => void) {
 }
 
 function getInviteCode() {
-  return normalizeRoomCode(new URLSearchParams(window.location.search).get("room") ?? "");
+  return normalizeRoomCode(
+    new URLSearchParams(window.location.search).get("room") ?? "",
+  );
 }
 
 function getRememberedName() {
@@ -38,16 +45,22 @@ function getServerValue() {
 }
 
 export default function Page() {
-  const guest = useGuestCredential({ issuer: issueGuest, autoAcquire: true, storage: null });
-  // Keep room selection outside credential-gated queries. Even an expired token
-  // or failed renewal must not discard the room or manufacture a new identity.
+  const guest = useGuestCredential({
+    issuer: issueGuest,
+    autoAcquire: true,
+    storage: null,
+  });
   const [roomId, setRoomId] = useState<Id<"rooms"> | null>(null);
   const rememberedName = useSyncExternalStore(
     subscribeToStorage,
     getRememberedName,
     getServerValue,
   );
-  const inviteCode = useSyncExternalStore(subscribeToNavigation, getInviteCode, getServerValue);
+  const inviteCode = useSyncExternalStore(
+    subscribeToNavigation,
+    getInviteCode,
+    getServerValue,
+  );
   const [editedName, setDisplayName] = useState<string>();
   const [editedCode, setCode] = useState<string>();
   const displayName = editedName ?? rememberedName;
@@ -69,7 +82,10 @@ export default function Page() {
     setError("");
     try {
       const args = { displayName: name.value, guestToken: guest.credential };
-      const result = mode === "create" ? await createRoom(args) : await joinRoom({ ...args, code });
+      const result =
+        mode === "create"
+          ? await createRoom(args)
+          : await joinRoom({ ...args, code });
       if (!("roomId" in result)) {
         throw new Error("code" in result ? result.code : "ROOM_UNAVAILABLE");
       }
@@ -83,7 +99,7 @@ export default function Page() {
       try {
         sessionStorage.setItem("kindred:name", name.value);
       } catch {
-        // Losing the remembered display name must not block joining a room.
+        // Remembering a display name is optional; entering the room is not.
       }
       audio.play("join");
     } catch (cause) {
@@ -92,6 +108,12 @@ export default function Page() {
       inFlight.current = false;
       setBusy(null);
     }
+  }
+
+  function retryGuest() {
+    const request =
+      guest.expiresAt === null ? guest.acquire() : guest.refresh();
+    void request.catch(() => {});
   }
 
   function exit() {
@@ -107,20 +129,29 @@ export default function Page() {
 
   return (
     <main className="shell">
+      <div className="ambient-light ambient-light--amber" aria-hidden="true" />
+      <div className="ambient-light ambient-light--teal" aria-hidden="true" />
       <header className="app-header">
-        <div>
-          <h1>Kindred</h1>
-          <p>Same brain? One secret answer each, then find out.</p>
-        </div>
+        <a className="brand-lockup" href="/" aria-label="Kindred home">
+          <img src="/brand/kindred-mark.svg" width="64" height="64" alt="" />
+          <span>
+            <span className="eyebrow">A game of shared sparks</span>
+            <span className="wordmark">Kindred</span>
+          </span>
+        </a>
         <button
           type="button"
           className="sound-toggle secondary"
           aria-pressed={audio.enabled}
+          aria-label={audio.enabled ? "Turn sound off" : "Turn sound on"}
           onClick={() => {
             if (audio.toggleMuted()) audio.play("ready");
           }}
         >
-          Sound {audio.enabled ? "on" : "off"}
+          <span aria-hidden="true">{audio.enabled ? "♪" : "♪̸"}</span>
+          <span className="sound-label">
+            {audio.enabled ? "Sound on" : "Sound off"}
+          </span>
         </button>
       </header>
 
@@ -135,29 +166,60 @@ export default function Page() {
             />
           </RoomBoundary>
         ) : (
-          <section className="panel" aria-busy={guest.loading}>
-            <h2>Keeping your place</h2>
+          <section className="panel status-panel" aria-busy={guest.loading}>
+            <span className="status-orbit" aria-hidden="true" />
+            <p className="eyebrow">Hold that thought</p>
+            <h2>Your place is still here.</h2>
             <p role="status">
               {guest.loading
-                ? "Renewing guest access…"
-                : "Renew guest access below to reconnect to your selected room."}
+                ? "Reconnecting you…"
+                : "Reconnect to return to the room."}
             </p>
+            {!guest.loading && (
+              <button type="button" onClick={retryGuest}>
+                Reconnect
+              </button>
+            )}
           </section>
         )
       ) : (
         <section className="panel lobby" aria-labelledby="lobby-heading">
-          <h2 id="lobby-heading">Get everyone in the room</h2>
-          <p>
-            Create a room, share its code, then start when at least two players are here. No
-            accounts needed.
-          </p>
-          {!guest.credential && (
-            <p role="status">
-              {guest.loading
-                ? "Getting guest access…"
-                : "Guest access is needed before you can join. Use the controls below to retry."}
+          <div className="lobby-intro">
+            <p className="eyebrow">Same room. Secret answers.</p>
+            <h1 id="lobby-heading">Find the same thought.</h1>
+            <p>
+              Answer in secret, then discover who lit up with the same idea.
             </p>
+          </div>
+
+          {!guest.credential && (
+            <div
+              className="inline-notice"
+              role={guest.error ? "alert" : "status"}
+            >
+              <span className="status-orbit" aria-hidden="true" />
+              <div>
+                <strong>
+                  {guest.loading
+                    ? "Making space for you…"
+                    : "We lost the connection."}
+                </strong>
+                {guest.error !== null && guest.error !== undefined && (
+                  <p>{errorMessage(guest.error)}</p>
+                )}
+              </div>
+              {!guest.loading && (
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={retryGuest}
+                >
+                  Try again
+                </button>
+              )}
+            </div>
           )}
+
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -165,7 +227,7 @@ export default function Page() {
             }}
             aria-busy={busy !== null}
           >
-            <label htmlFor="display-name">Your name</label>
+            <label htmlFor="display-name">What should we call you?</label>
             <input
               id="display-name"
               name="displayName"
@@ -175,29 +237,37 @@ export default function Page() {
               required
               disabled={busy !== null}
               aria-describedby="name-help"
+              placeholder="Your name"
               onChange={(event) => setDisplayName(event.currentTarget.value)}
             />
             <p id="name-help" className="hint">
-              1–24 characters. Rejoining from this browser keeps your player and seat.
+              Keep it to 24 characters.
             </p>
             {displayName.trim() && !name.ok && (
-              <p role="status">Use a name between 1 and 24 characters.</p>
+              <p className="field-error" role="status">
+                Use 1 to 24 characters.
+              </p>
             )}
             <button
               type="button"
+              className="primary-action"
               disabled={entryDisabled}
               onClick={() => {
                 void enter("create");
               }}
             >
-              {busy === "create" ? "Creating room…" : "Create room"}
+              {busy === "create" ? "Starting a room…" : "Start a room"}
             </button>
+
+            <div className="join-divider" aria-hidden="true">
+              <span>or join your people</span>
+            </div>
             <div className="join-form">
               <RoomCodeInput
                 value={code}
                 onChange={setCode}
                 label="Room code"
-                description="Ask your host for the four-character code."
+                description="Four characters from your host."
                 disabled={busy !== null}
                 sound={audio.enabled}
               />
@@ -206,7 +276,7 @@ export default function Page() {
                 className="secondary"
                 disabled={entryDisabled || code.length !== 4}
               >
-                {busy === "join" ? "Joining room…" : "Join room"}
+                {busy === "join" ? "Joining…" : "Join room"}
               </button>
             </div>
           </form>
@@ -215,47 +285,15 @@ export default function Page() {
               {error}
             </p>
           )}
-          <p className="hint">
-            For a second player on one computer, use a separate browser profile or private window.
-            Tabs in the same browser share an identity.
-          </p>
         </section>
       )}
 
-      <section className="guest-tools" aria-labelledby="guest-heading">
-        <h2 id="guest-heading">Browser identity</h2>
-        {guest.error !== null && (
-          <p className="error" role="alert">
-            {errorMessage(guest.error)}
-          </p>
-        )}
-        <p className="hint">
-          {guest.credential ? "Guest access is ready. " : "Guest access is not ready. "}
-          A signed cookie preserves your player when you refresh. Access tokens stay in memory.
-        </p>
-        <button
-          type="button"
-          className="secondary"
-          disabled={guest.loading}
-          onClick={() => {
-            // The hook retains the error and old proof; never clear identity on failure.
-            const request = guest.expiresAt === null ? guest.acquire() : guest.refresh();
-            void request.catch(() => {});
-          }}
-        >
-          {guest.loading
-            ? "Getting guest access…"
-            : guest.credential
-              ? "Renew guest access"
-              : "Retry guest access"}
-        </button>
-      </section>
-      <footer className="app-footer">
-        <p>
-          Answers are judged for exact contextual equivalence — car matches automobile, not bus.
-          Groups never chain through loose similarity.
-        </p>
-      </footer>
+      {!roomId && (
+        <footer className="app-footer">
+          <span className="footer-spark" aria-hidden="true" />
+          <p>Your answer stays hidden until everyone is ready.</p>
+        </footer>
+      )}
     </main>
   );
 }

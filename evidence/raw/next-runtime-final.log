@@ -1,0 +1,11 @@
+Scope: all 6 workspace projects
+✓ Lockfile passes supply-chain policies (verified 22m ago)
+Lockfile is up to date, resolution step is skipped
+Already up to date
+
+Done in 831ms using pnpm v11.25.0
+▲ Next.js 16.3.4
+- Local:         http://127.0.0.1:3000
+- Network:       http://127.0.0.1:3000
+✓ Ready in 104ms
+✓ Running next.config.ts took 254ms

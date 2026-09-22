@@ -12,15 +12,23 @@
     "build:parlor": "pnpm --filter './vendor/parlor/**' -r build",
     "build": "pnpm build:parlor && next build",
     "build:app": "pnpm build:parlor && next build",
-    "typecheck": "tsc --noEmit",
-    "test": "node --test tests/rules.test.ts"
+    "typecheck": "next typegen && tsc --noEmit",
+    "lint": "oxlint --deny-warnings app convex tests scripts evidence/qa/*.mjs instrumentation.ts instrumentation-client.ts sentry.server.config.ts sentry.edge.config.ts next.config.ts",
+    "format:check": "prettier --check \"{app,convex,tests,scripts,config}/**/*.{ts,tsx,mjs,md,json,css}\" \"*.{ts,json,jsonc,yaml,yml}\"",
+    "test:unit": "node --test tests/*.test.ts",
+    "test:convex": "vitest run tests/convex/events.test.ts",
+    "test": "pnpm test:unit && pnpm test:convex",
+    "check": "pnpm format:check && pnpm build:parlor && pnpm lint && pnpm typecheck && pnpm test && next build"
   },
   "dependencies": {
+    "@fontsource-variable/fraunces": "5.3.0",
+    "@fontsource-variable/manrope": "5.3.0",
     "@parlor/auth": "workspace:*",
     "@parlor/convex": "workspace:*",
     "@parlor/core": "workspace:*",
     "@parlor/react": "workspace:*",
     "@parlor/web": "workspace:*",
+    "@sentry/nextjs": "10.75.1",
     "convex": "1.45.0",
     "effect": "3.22.1",
     "next": "16.3.4",
@@ -29,10 +37,21 @@
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "1.20.6",
+    "@playwright/test": "1.63.0",
     "@types/node": "26.0.0",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
+    "convex-test": "0.0.56",
+    "oxlint": "1.85.0",
+    "prettier": "3.9.8",
     "typescript": "7.0.2",
+    "vite": "8.2.2",
+    "vitest": "5.0.0",
     "wrangler": "4.129.0"
-  }
+  },
+  "engines": {
+    "node": ">=22.12.0",
+    "pnpm": ">=11"
+  },
+  "packageManager": "pnpm@11.25.0"
 }

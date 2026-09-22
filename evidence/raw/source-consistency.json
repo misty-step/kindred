@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Bind the preserved remote verification run to the local publication candidate by content, before commit.",
+  "remote": {
+    "host": "kindred-qa-t5794ad8a.exe.xyz",
+    "sourceRoot": "/home/exedev/kindred",
+    "verificationLog": "/home/exedev/kindred-qa-runtime/final-check.log"
+  },
+  "scope": {
+    "definition": "All Git-tracked files (including submodule files) plus candidate untracked source files, excluding generated raw/visual QA artifacts and evidence/qa/gameplay-receipt.json.",
+    "pathCount": 223,
+    "changedCandidatePathCount": 38,
+    "excluded": [
+      "evidence/raw/**",
+      "evidence/visual/**",
+      "evidence/qa/gameplay-receipt.json"
+    ]
+  },
+  "localManifestSha256": "7b0761e751998c4a4279a3503064a209ae5e30dc5080363e02f31cd770321684",
+  "remoteManifestSha256": "7b0761e751998c4a4279a3503064a209ae5e30dc5080363e02f31cd770321684",
+  "changedCandidateManifestSha256": "a1af8fabfe897aacc9c1f10e6d8d28dd27cfa8ef1d211d0a858ea875dfc07f1c",
+  "allExpectedFilesPresent": true,
+  "allContentMatches": true,
+  "mismatches": [],
+  "finalCheck": {
+    "bytes": 5585,
+    "mtimeUtc": "2026-09-22T08:05:29.640816Z",
+    "sha256": "7730383709f6caea5e58f07a59582a121b741611d228792d36cb8ae4cd388182",
+    "copiedPath": "evidence/raw/final-check.log",
+    "exitStatus": 0
+  },
+  "baselineHead": "cde5dc5e792c4113b7ddc3e7fcead71d57aaa16b"
+}

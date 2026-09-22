@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" role="img" aria-labelledby="title description">
+  <title id="title">Kindred fireflies</title>
+  <desc id="description">Two lights curve toward one another.</desc>
+  <rect width="16" height="16" rx="4" fill="#0b1026"/>
+  <path d="M3.4 11.7C5.2 7.8 8.4 5.6 12.7 4.2" fill="none" stroke="#f8efd3" stroke-opacity=".78" stroke-width="1.45" stroke-linecap="round"/>
+  <circle cx="4.4" cy="10.9" r="2.15" fill="#f6b84a"/>
+  <circle cx="11.7" cy="5.1" r="2.15" fill="#59d6c7"/>
+  <circle cx="3.85" cy="10.35" r=".48" fill="#fff4bd"/>
+  <circle cx="11.15" cy="4.55" r=".48" fill="#d9fff8"/>
+</svg>

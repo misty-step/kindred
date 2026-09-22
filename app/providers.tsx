@@ -12,16 +12,17 @@ export function Providers({ children }: { children: ReactNode }) {
   if (!client) {
     return (
       <main className="shell">
-        <h1>Kindred</h1>
-        <section className="panel" role="alert">
-          <h2>Connect the backend first</h2>
+        <header className="app-header">
+          <a className="brand-lockup" href="/" aria-label="Kindred home">
+            <img src="/brand/kindred-mark.svg" width="64" height="64" alt="" />
+            <span className="wordmark">Kindred</span>
+          </a>
+        </header>
+        <section className="panel status-panel" role="alert">
+          <p className="eyebrow">A quiet moment</p>
+          <h1>Kindred is resting.</h1>
           <p>
-            Run <code>pnpm dev:backend</code> and choose a development backend.
-          </p>
-          <p>
-            Then run <code>pnpm run setup</code> and restart this web server.
-            Convex must write <code>NEXT_PUBLIC_CONVEX_URL</code> to this
-            app&apos;s <code>.env.local</code>.
+            The rooms are unavailable right now. Try again in a little while.
           </p>
         </section>
       </main>
