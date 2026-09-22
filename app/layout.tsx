@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml", sizes: "any" }],
     shortcut: "/icon.svg",
-    apple: [{ url: "/apple-icon", type: "image/png", sizes: "180x180" }],
+    apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "180x180" }],
   },
   openGraph: {
     type: "website",
@@ -29,13 +29,20 @@ export const metadata: Metadata = {
     siteName: "Kindred",
     title: "Kindred · Find the same thought",
     description: "Answer in secret. Discover who thought like you.",
-    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Kindred fireflies" }],
+    images: [
+      {
+        url: "/opengraph-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Kindred fireflies",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Kindred · Find the same thought",
     description: "Answer in secret. Discover who thought like you.",
-    images: ["/opengraph-image"],
+    images: ["/opengraph-image.png"],
   },
   robots: { index: true, follow: true },
 };

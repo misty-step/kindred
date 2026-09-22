@@ -73,7 +73,10 @@ test("Sentry redaction removes player and request identity but preserves trace m
     },
     breadcrumbs: [{ message: "private thought" }],
     extra: { token: "secret" },
-    contexts: { trace: { trace_id: "abc" }, device: { name: "phone" } },
+    contexts: {
+      trace: { trace_id: "0123456789abcdef0123456789abcdef" },
+      device: { name: "phone" },
+    },
     tags: { runtime: "browser", playerName: "Ada" },
   });
   assert.deepEqual(event.user, undefined);
@@ -81,7 +84,9 @@ test("Sentry redaction removes player and request identity but preserves trace m
     method: "POST",
     url: "https://kindred.mistystep.io/",
   });
-  assert.deepEqual(event.contexts, { trace: { trace_id: "abc" } });
+  assert.deepEqual(event.contexts, {
+    trace: { trace_id: "0123456789abcdef0123456789abcdef" },
+  });
   assert.deepEqual(event.tags, { runtime: "browser" });
   assert.equal(event.breadcrumbs, undefined);
   assert.equal(event.extra, undefined);
