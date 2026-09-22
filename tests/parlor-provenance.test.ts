@@ -41,6 +41,7 @@ test("Parlor skill provenance records the exact pinned gitlink and matching sour
   assert.equal(source.importer.baseRevision, revision);
   assert.equal(source.reference.differsFromCommit, false);
   assert.equal(source.reference.sha256, sha256(reference));
+  assert.deepEqual(reference, vendorReference);
   assert.equal(source.reference.sha256, sha256(vendorReference));
   assert.equal(source.importer.sha256, sha256(importer));
   const recordedSource =
