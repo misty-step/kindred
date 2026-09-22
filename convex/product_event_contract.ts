@@ -54,12 +54,10 @@ export type ProductEvent = Readonly<{
 }>;
 
 /**
- * Opaque session ids emitted by supervised production verification. This
- * append-only manifest classifies retained rows without rewriting history.
+ * Exact session ids bound to both a named supervised-production run and
+ * overlapping telemetry. See docs/production-analytics-fixture-exclusions.md.
  */
 export const KNOWN_PRODUCTION_FIXTURE_SESSION_IDS = [
-  "k57dq3shp968a2pa38xkzva6bh8ewep0",
-  "jn76ytbj7bhnsctyhs265dg5gx8ewtse",
   "k57agtpm30kn5ktpawsvb00ba58exq3m",
   "jn71m1d8747khhn92vkyxtnf258ewv0n",
   "jn71tpe4grfe832g4hkza4a32n8ewa4e",
@@ -74,10 +72,12 @@ export function partitionProductEventsForAnalytics(
   environment: ProductEnvironment,
 ): Readonly<{
   fixtureEvents: readonly ProductEvent[];
+  unclassifiedEvents: readonly ProductEvent[];
+  /** @deprecated This is an alias for unclassifiedEvents, not verified-human traffic. */
   genuineEvents: readonly ProductEvent[];
 }> {
   const fixtureEvents: ProductEvent[] = [];
-  const genuineEvents: ProductEvent[] = [];
+  const unclassifiedEvents: ProductEvent[] = [];
   for (const row of rows) {
     if (row.environment !== environment) continue;
     if (
@@ -86,10 +86,14 @@ export function partitionProductEventsForAnalytics(
     ) {
       fixtureEvents.push(row);
     } else {
-      genuineEvents.push(row);
+      unclassifiedEvents.push(row);
     }
   }
-  return { fixtureEvents, genuineEvents };
+  return {
+    fixtureEvents,
+    unclassifiedEvents,
+    genuineEvents: unclassifiedEvents,
+  };
 }
 
 type Validation =

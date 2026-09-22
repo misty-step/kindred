@@ -184,39 +184,91 @@ test("summary excludes test traffic, deduplicates, and exposes replay and failur
   });
 });
 
-test("production analytics exclude exact supervised fixtures and retain genuine traffic", () => {
-  const fixtureEvents = KNOWN_PRODUCTION_FIXTURE_SESSION_IDS.map(
-    (sessionId, index) =>
-      buildProductEvent(
-        event({
-          eventId: `event_fixture_${index}`,
-          environment: "production",
-          sessionId,
-        }),
-      ),
+test("production analytics exclude only receipt-bound fixtures and retain uncertain sessions", () => {
+  const receiptBoundSessionIds = [
+    "k57agtpm30kn5ktpawsvb00ba58exq3m",
+    "jn71m1d8747khhn92vkyxtnf258ewv0n",
+    "jn71tpe4grfe832g4hkza4a32n8ewa4e",
+  ] as const;
+  const uncertainSessionIds = [
+    "k57dq3shp968a2pa38xkzva6bh8ewep0",
+    "jn76ytbj7bhnsctyhs265dg5gx8ewtse",
+  ] as const;
+  assert.deepEqual(
+    [...KNOWN_PRODUCTION_FIXTURE_SESSION_IDS],
+    receiptBoundSessionIds,
   );
-  const genuineEvent = buildProductEvent(
+
+  const fixtureEvents = receiptBoundSessionIds.map((sessionId, index) =>
+    buildProductEvent(
+      event({
+        eventId: `event_fixture_${index}`,
+        environment: "production",
+        sessionId,
+      }),
+    ),
+  );
+  const uncertainEvents = uncertainSessionIds.map((sessionId, index) =>
+    buildProductEvent(
+      event({
+        eventId: `event_uncertain_${index}`,
+        environment: "production",
+        sessionId,
+      }),
+    ),
+  );
+  const nearMatchEvent = buildProductEvent(
     event({
-      eventId: "event_genuine_0001",
+      eventId: "event_near_match_0001",
       environment: "production",
-      sessionId: `${KNOWN_PRODUCTION_FIXTURE_SESSION_IDS.at(-1)}-genuine-control`,
+      sessionId: `${receiptBoundSessionIds.at(-1)}-near-match`,
     }),
   );
-  const rows = [...fixtureEvents, genuineEvent];
+  const unrelatedEvent = buildProductEvent(
+    event({
+      eventId: "event_unrelated_0001",
+      environment: "production",
+      sessionId: "session_unclassified_control",
+    }),
+  );
+  const stagingEvent = buildProductEvent(
+    event({
+      eventId: "event_staging_0001",
+      environment: "staging",
+      sessionId: receiptBoundSessionIds[0],
+    }),
+  );
+  const rows = [
+    ...fixtureEvents,
+    ...uncertainEvents,
+    nearMatchEvent,
+    unrelatedEvent,
+    stagingEvent,
+  ];
 
   const partition = partitionProductEventsForAnalytics(rows, "production");
+  const retainedEventIds = [
+    ...uncertainEvents.map((row) => row.eventId),
+    nearMatchEvent.eventId,
+    unrelatedEvent.eventId,
+  ];
 
   assert.deepEqual(
     partition.fixtureEvents.map((row) => row.eventId),
     fixtureEvents.map((row) => row.eventId),
   );
   assert.deepEqual(
+    partition.unclassifiedEvents.map((row) => row.eventId),
+    retainedEventIds,
+  );
+  assert.deepEqual(
     partition.genuineEvents.map((row) => row.eventId),
-    [genuineEvent.eventId],
+    retainedEventIds,
+    "legacy genuineEvents alias means not-known-fixture, not verified human",
   );
   assert.equal(
     rows.length,
-    KNOWN_PRODUCTION_FIXTURE_SESSION_IDS.length + 1,
+    fixtureEvents.length + retainedEventIds.length + 1,
     "classification must not mutate retained rows",
   );
 });

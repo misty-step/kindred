@@ -185,13 +185,16 @@ export const summary = query({
       events,
       args.environment,
     );
+    const unclassifiedEventsRetained = partition.unclassifiedEvents.length;
     return {
       environment: args.environment,
       sampledEvents: events.length,
       fixtureEventsExcluded: partition.fixtureEvents.length,
-      genuineEventsRetained: partition.genuineEvents.length,
+      unclassifiedEventsRetained,
+      // Backward-compatible alias; this does not certify human traffic.
+      genuineEventsRetained: unclassifiedEventsRetained,
       truncated: events.length === 1_000,
-      ...summarizeKindredEvents(partition.genuineEvents, args.environment),
+      ...summarizeKindredEvents(partition.unclassifiedEvents, args.environment),
     };
   },
 });
