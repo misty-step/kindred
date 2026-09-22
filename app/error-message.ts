@@ -2,62 +2,44 @@ import { ConvexError } from "convex/values";
 
 const messages: Record<string, string> = {
   INVALID_DISPLAY_NAME: "Use a name between 1 and 24 characters.",
-  INVALID_ROOM_CODE: "Enter the four-character room code shown by your host.",
-  ROOM_NOT_OPEN: "That room is not open. Check the code or ask the host to create a new room.",
-  ROOM_NOT_FOUND: "This room no longer exists. Return to the lobby to create or join another.",
-  ROOM_CLOSED: "The host has closed this room. Return to the lobby to play again.",
-  ROOM_FULL:
-    "This room already has 12 players. Join a different room or wait for someone to leave.",
-  ROOM_JOIN_RATE_LIMIT:
-    "Too many recent joins or open rooms. Leave unused rooms and wait a minute before trying again.",
-  ROOM_CREATION_RATE_LIMIT:
-    "You have too many open rooms. Close or leave an unused room before creating another.",
-  ROOM_CODE_EXHAUSTED: "A room code could not be allocated right now. Try creating the room again.",
-  ROOM_DATA_INVALID:
-    "The room data is inconsistent. Check this development backend's data before continuing.",
-  MATCH_DATA_INVALID:
-    "The match history is inconsistent. Check this development backend's data before continuing.",
-  NOT_A_ROOM_MEMBER: "You are no longer a member of this room. Return to the lobby and join again.",
-  HOST_REQUIRED: "Only the current host can do that. Check who is marked as host in the player list.",
-  MATCH_ALREADY_ACTIVE: "A match is already running. Finish it before starting the next one.",
-  MATCH_NOT_ACTIVE:
-    "That match has already ended or expired. Check the result before the next match.",
-  MATCH_PARTICIPANT_REQUIRED:
-    "You are watching this match. Stay here and keep this window visible to join the next one.",
-  NOT_ENOUGH_PRESENT_PLAYERS:
-    "At least two players must be present. Keep both windows visible, then try starting again.",
-  TOO_MANY_PRESENT_PLAYERS:
-    "Only 12 players can play one match. Ask an extra player to leave, then try again.",
-  UNAUTHENTICATED:
-    "Guest access was not accepted. Renew guest access; if this persists, check that the web server and Convex use the same access keys and audience.",
-  PLAYER_NOT_FOUND:
-    "Your player could not be found. Return to the lobby and join again with this browser.",
-  GAME_NOT_FOUND: "This match has no Kindred game data. Close the room and create a new one.",
-  ANSWER_EMPTY: "Write something first. Your answer cannot be empty.",
-  ANSWER_TOO_LONG: "Keep it short — at most 64 characters.",
-  ANSWER_ALREADY_SUBMITTED:
-    "Your secret answer for this prompt is already locked in. Wait for the reveal.",
-  ROUND_NOT_FOUND: "This round does not belong to the current match.",
-  ROUND_NOT_ANSWERING: "This round is not taking answers right now.",
-  ROUND_NOT_REVEALED: "The anonymous reveal has not happened yet.",
-  ROUND_NOT_PENDING: "This round is not waiting for a judgment.",
-  ROUND_NOT_READY_TO_ADVANCE: "Names must be revealed before the next round can start.",
-  OVERRIDE_WINDOW_CLOSED: "Shared-memory overrides are only available after names are revealed.",
-  OVERRIDE_INVALID_PAIR: "You can only claim a shared memory with another player.",
-  JUDGE_EXHAUSTED:
-    "The judge retried too many times. Wait a moment and try again, or end the match.",
-  JEV_UNCONFIGURED:
-    "The equivalence judge is not configured on the backend. Ask the operator to finish backend setup.",
-  GUEST_ISSUER_UNCONFIGURED:
-    "The guest issuer is not configured. Finish setup and restart the web development server.",
-  GUEST_ISSUER_UNAVAILABLE:
-    "Guest access is unavailable. Check the web server and your connection, then retry.",
-  INVALID_GUEST_RESPONSE: "The guest issuer returned unusable access. Check the web server, then retry.",
-  SAME_ORIGIN_REQUIRED: "Use http://localhost:3000 for this local build, not 127.0.0.1 or a different port.",
-  GUEST_CONTINUITY_REQUIRED:
-    "This browser's identity cookie is missing. Existing access cannot recover the seat without it. Do not clear site data if you want to preserve your identity.",
-  GUEST_CONTINUITY_INVALID:
-    "This browser's identity cookie is invalid or expired. Retrying will not create a different guest. Recover the original server configuration if it changed; clearing site data deliberately starts a new identity.",
+  INVALID_ROOM_CODE: "Enter the four-character code from your host.",
+  ROOM_NOT_OPEN: "That room is not open. Check the code or ask for a new one.",
+  ROOM_NOT_FOUND: "This room is gone. Return to the lobby to find another.",
+  ROOM_CLOSED: "This room is closed. Return to the lobby to play again.",
+  ROOM_FULL: "This room already has 12 players.",
+  ROOM_JOIN_RATE_LIMIT: "That was a lot of joins. Wait a minute, then try again.",
+  ROOM_CREATION_RATE_LIMIT: "You have too many open rooms. Leave one before starting another.",
+  ROOM_CODE_EXHAUSTED: "We could not make a room just now. Try again.",
+  ROOM_DATA_INVALID: "This room hit a snag. Return to the lobby and start another.",
+  MATCH_DATA_INVALID: "This game hit a snag. Return to the lobby and start another.",
+  NOT_A_ROOM_MEMBER: "You are no longer in this room. Return to the lobby and join again.",
+  HOST_REQUIRED: "Only the current host can do that.",
+  MATCH_ALREADY_ACTIVE: "A game is already running. Finish it before starting another.",
+  MATCH_NOT_ACTIVE: "That game has already ended.",
+  MATCH_PARTICIPANT_REQUIRED: "You are watching this one. You will join the next game.",
+  NOT_ENOUGH_PRESENT_PLAYERS: "At least two players need to be here.",
+  TOO_MANY_PRESENT_PLAYERS: "Only 12 players can play at once.",
+  UNAUTHENTICATED: "We could not reconnect you. Try again.",
+  PLAYER_NOT_FOUND: "We could not find your place. Return to the lobby and join again.",
+  GAME_NOT_FOUND: "This game is unavailable. Close the room and start another.",
+  ANSWER_EMPTY: "Write an answer first.",
+  ANSWER_TOO_LONG: "Keep your answer to 64 characters.",
+  ANSWER_ALREADY_SUBMITTED: "Your answer is already in. Wait for the reveal.",
+  ROUND_NOT_FOUND: "This round is no longer available.",
+  ROUND_NOT_ANSWERING: "This round is not taking answers now.",
+  ROUND_NOT_REVEALED: "The first reveal is not ready yet.",
+  ROUND_NOT_PENDING: "The reveal is not waiting for another try.",
+  ROUND_NOT_READY_TO_ADVANCE: "Reveal the names before starting the next round.",
+  OVERRIDE_WINDOW_CLOSED: "Shared memory is available after the names appear.",
+  OVERRIDE_INVALID_PAIR: "Choose the other player in this round.",
+  JUDGE_EXHAUSTED: "The reveal needs a moment. Try again soon.",
+  JEV_UNCONFIGURED: "The reveal is unavailable right now. Try again soon.",
+  GUEST_ISSUER_UNCONFIGURED: "Rooms are unavailable right now. Try again soon.",
+  GUEST_ISSUER_UNAVAILABLE: "We could not connect you. Check your connection and try again.",
+  INVALID_GUEST_RESPONSE: "We could not connect you. Try again.",
+  SAME_ORIGIN_REQUIRED: "Open Kindred from its main address and try again.",
+  GUEST_CONTINUITY_REQUIRED: "We could not recover your place. Return to the lobby and join again.",
+  GUEST_CONTINUITY_INVALID: "Your saved place has expired. Return to the lobby and join again.",
 };
 
 export function errorMessage(error: unknown): string {
@@ -68,8 +50,5 @@ export function errorMessage(error: unknown): string {
       : error instanceof Error
         ? error.message
         : "";
-  // Never show raw transport errors, request arguments or credential material.
-  return (
-    messages[code] ?? "The request could not be completed. Check your connection and try again."
-  );
+  return messages[code] ?? "That did not work. Check your connection and try again.";
 }

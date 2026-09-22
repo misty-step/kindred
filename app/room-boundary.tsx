@@ -27,13 +27,10 @@ export class RoomBoundary extends Component<Props, State> {
   override render() {
     if (this.state.error !== null) {
       return (
-        <section className="panel">
-          <h2>Room access needs attention</h2>
+        <section className="panel status-panel">
+          <p className="eyebrow">Hold that thought</p>
+          <h2>We could not open this room.</h2>
           <p role="alert">{errorMessage(this.state.error)}</p>
-          <p>
-            Your selected room and guest identity have not been reset. You can renew guest access
-            below or retry this room.
-          </p>
           <div className="button-row">
             <button type="button" onClick={() => this.setState({ error: null })}>
               Retry room

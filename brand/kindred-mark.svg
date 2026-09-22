@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title description">
+  <title id="title">Kindred fireflies</title>
+  <desc id="description">Two lights curve toward one another in a night sky.</desc>
+  <defs>
+    <radialGradient id="night" cx="50%" cy="42%" r="72%">
+      <stop offset="0" stop-color="#202b58"/>
+      <stop offset="1" stop-color="#0b1026"/>
+    </radialGradient>
+    <radialGradient id="amber" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#fff4bd"/>
+      <stop offset="0.45" stop-color="#ffd36f"/>
+      <stop offset="1" stop-color="#f2a93b"/>
+    </radialGradient>
+    <radialGradient id="teal" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#d9fff8"/>
+      <stop offset="0.45" stop-color="#76e6d6"/>
+      <stop offset="1" stop-color="#31b8aa"/>
+    </radialGradient>
+    <filter id="glow" x="-120%" y="-120%" width="340%" height="340%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#night)"/>
+  <path d="M106 351C158 211 251 160 399 168" fill="none" stroke="#f8efd3" stroke-opacity=".68" stroke-width="27" stroke-linecap="round"/>
+  <path d="M116 348C190 327 265 278 312 210" fill="none" stroke="#0b1026" stroke-opacity=".42" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="145" cy="335" r="58" fill="#f6b84a" opacity=".22" filter="url(#glow)"/>
+  <circle cx="365" cy="181" r="58" fill="#59d6c7" opacity=".22" filter="url(#glow)"/>
+  <circle cx="145" cy="335" r="38" fill="url(#amber)"/>
+  <circle cx="365" cy="181" r="38" fill="url(#teal)"/>
+  <circle cx="133" cy="323" r="9" fill="#fff" opacity=".7"/>
+  <circle cx="353" cy="169" r="9" fill="#fff" opacity=".7"/>
+</svg>
