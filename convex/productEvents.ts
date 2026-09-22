@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import {
   buildProductEvent,
+  partitionProductEventsForAnalytics,
   summarizeKindredEvents,
 } from "./product_event_contract";
 import {
@@ -180,11 +181,17 @@ export const summary = query({
     const events = rows.map(
       ({ _id: _ignoredId, _creationTime: _ignoredTime, ...event }) => event,
     );
+    const partition = partitionProductEventsForAnalytics(
+      events,
+      args.environment,
+    );
     return {
       environment: args.environment,
       sampledEvents: events.length,
+      fixtureEventsExcluded: partition.fixtureEvents.length,
+      genuineEventsRetained: partition.genuineEvents.length,
       truncated: events.length === 1_000,
-      ...summarizeKindredEvents(events, args.environment),
+      ...summarizeKindredEvents(partition.genuineEvents, args.environment),
     };
   },
 });

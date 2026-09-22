@@ -205,4 +205,37 @@ describe("Kindred lifecycle product events", () => {
       }),
     );
   });
+
+  it("excludes retained production fixtures from the operational summary", async () => {
+    vi.stubEnv("PRODUCT_ENVIRONMENT", "production");
+    const t = convexTest(schema, modules);
+    const fixtureSessionId = "jn71m1d8747khhn92vkyxtnf258ewv0n";
+    for (const [eventId, sessionId] of [
+      ["summary-fixture-event", fixtureSessionId],
+      ["summary-genuine-event", `${fixtureSessionId}-genuine-control`],
+    ] as const) {
+      await t.mutation(internal.productEvents.emit, {
+        eventId,
+        eventName: "match_start",
+        occurredAt: Date.parse("2026-09-22T15:10:53.661Z"),
+        sessionId,
+        props: {
+          room_players: 2,
+          round_count: 5,
+          game_mode: "soulmate",
+        },
+      });
+    }
+
+    const summary = await t.query(api.productEvents.summary, {
+      environment: "production",
+    });
+
+    expect(summary).toMatchObject({
+      sampledEvents: 2,
+      fixtureEventsExcluded: 1,
+      genuineEventsRetained: 1,
+      sessionsStarted: 1,
+    });
+  });
 });

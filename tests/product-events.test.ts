@@ -3,6 +3,8 @@ import test from "node:test";
 import {
   buildProductEvent,
   KINDRED_EVENT_NAMES,
+  KNOWN_PRODUCTION_FIXTURE_SESSION_IDS,
+  partitionProductEventsForAnalytics,
   summarizeKindredEvents,
   validateProductEvent,
 } from "../convex/product_event_contract.ts";
@@ -180,4 +182,41 @@ test("summary excludes test traffic, deduplicates, and exposes replay and failur
     abandonments: 1,
     evaluatorFailures: 1,
   });
+});
+
+test("production analytics exclude exact supervised fixtures and retain genuine traffic", () => {
+  const fixtureEvents = KNOWN_PRODUCTION_FIXTURE_SESSION_IDS.map(
+    (sessionId, index) =>
+      buildProductEvent(
+        event({
+          eventId: `event_fixture_${index}`,
+          environment: "production",
+          sessionId,
+        }),
+      ),
+  );
+  const genuineEvent = buildProductEvent(
+    event({
+      eventId: "event_genuine_0001",
+      environment: "production",
+      sessionId: `${KNOWN_PRODUCTION_FIXTURE_SESSION_IDS.at(-1)}-genuine-control`,
+    }),
+  );
+  const rows = [...fixtureEvents, genuineEvent];
+
+  const partition = partitionProductEventsForAnalytics(rows, "production");
+
+  assert.deepEqual(
+    partition.fixtureEvents.map((row) => row.eventId),
+    fixtureEvents.map((row) => row.eventId),
+  );
+  assert.deepEqual(
+    partition.genuineEvents.map((row) => row.eventId),
+    [genuineEvent.eventId],
+  );
+  assert.equal(
+    rows.length,
+    KNOWN_PRODUCTION_FIXTURE_SESSION_IDS.length + 1,
+    "classification must not mutate retained rows",
+  );
 });

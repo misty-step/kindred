@@ -53,6 +53,45 @@ export type ProductEvent = Readonly<{
   props: ProductEventProps;
 }>;
 
+/**
+ * Opaque session ids emitted by supervised production verification. This
+ * append-only manifest classifies retained rows without rewriting history.
+ */
+export const KNOWN_PRODUCTION_FIXTURE_SESSION_IDS = [
+  "k57dq3shp968a2pa38xkzva6bh8ewep0",
+  "jn76ytbj7bhnsctyhs265dg5gx8ewtse",
+  "k57agtpm30kn5ktpawsvb00ba58exq3m",
+  "jn71m1d8747khhn92vkyxtnf258ewv0n",
+  "jn71tpe4grfe832g4hkza4a32n8ewa4e",
+] as const;
+
+const productionFixtureSessionIds = new Set<string>(
+  KNOWN_PRODUCTION_FIXTURE_SESSION_IDS,
+);
+
+export function partitionProductEventsForAnalytics(
+  rows: readonly ProductEvent[],
+  environment: ProductEnvironment,
+): Readonly<{
+  fixtureEvents: readonly ProductEvent[];
+  genuineEvents: readonly ProductEvent[];
+}> {
+  const fixtureEvents: ProductEvent[] = [];
+  const genuineEvents: ProductEvent[] = [];
+  for (const row of rows) {
+    if (row.environment !== environment) continue;
+    if (
+      environment === "production" &&
+      productionFixtureSessionIds.has(row.sessionId)
+    ) {
+      fixtureEvents.push(row);
+    } else {
+      genuineEvents.push(row);
+    }
+  }
+  return { fixtureEvents, genuineEvents };
+}
+
 type Validation =
   { ok: true; value: ProductEvent } | { ok: false; reason: string };
 type PropRule = (value: unknown) => boolean;
