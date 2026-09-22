@@ -5,7 +5,7 @@ import {
   KINDRED_EVENT_NAMES,
   summarizeKindredEvents,
   validateProductEvent,
-} from "../convex/product-event-contract.ts";
+} from "../convex/product_event_contract.ts";
 
 const environment = "test" as const;
 const occurredAt = "2026-09-21T12:00:00.000Z";

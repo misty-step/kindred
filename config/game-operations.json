@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "game": "kindred",
+  "approvedOpsRef": "misty-step/hermes-config@5241de4b93ac68348d4a48a87f9d38750f55af88",
+  "productEvents": {
+    "contract": "product-events/v1",
+    "store": "convex",
+    "environmentVariable": "PRODUCT_ENVIRONMENT",
+    "contentPolicy": "no-player-text",
+    "actorPolicy": "anonymous-null"
+  },
+  "sentry": {
+    "organization": "misty-step",
+    "projectSlug": "kindred",
+    "environment": "production",
+    "releaseVariable": "SENTRY_RELEASE",
+    "environmentVariable": "PRODUCT_ENVIRONMENT",
+    "sourceMaps": true,
+    "tracesSampleRate": 0.05,
+    "sendDefaultPii": false,
+    "triage": {
+      "route": "sentry-games",
+      "adapter": "scripts/sentry/sentry-game-filter.py",
+      "status": "prepared-not-activated",
+      "activationOwner": "t_089aca22"
+    }
+  },
+  "health": {
+    "path": "/api/health",
+    "backendPath": "/health",
+    "cache": "no-store",
+    "timeoutMs": 3000
+  }
+}

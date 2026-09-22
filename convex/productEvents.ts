@@ -1,13 +1,13 @@
-import { resolvePlayer } from "@parlor/convex";
 import { v } from "convex/values";
-import { buildProductEvent, summarizeKindredEvents } from "./product-event-contract";
+import { buildProductEvent, summarizeKindredEvents } from "./product_event_contract";
 import {
   productEnvironmentValidator,
   productEventNameValidator,
   productEventPropsValidator,
-} from "./product-event-validators";
+} from "./product_event_validators";
 import { internal } from "./_generated/api";
-import { internalMutation, mutation, query, type MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import { internalMutation, query, type MutationCtx } from "./_generated/server";
 
 declare const process: { env: Record<string, string | undefined> };
 
@@ -78,60 +78,84 @@ export const emit = internalMutation({
   },
 });
 
-/** Records room creation/join from authenticated room state, never client claims. */
-export const recordRoomEntry = mutation({
-  args: {
-    roomId: v.id("rooms"),
-    guestToken: v.string(),
-    eventId: v.string(),
+/**
+ * Schedule authenticated room-entry signals from the same transaction that
+ * created the membership. Membership ids make retries idempotent without
+ * retaining player ids in analytics.
+ */
+export async function scheduleRoomEntry(
+  ctx: MutationCtx,
+  input: {
+    roomId: Id<"rooms">;
+    playerId: Id<"players">;
+    eventName: "room_created" | "room_joined";
   },
-  returns: v.null(),
-  handler: async (ctx, args): Promise<null> => {
-    const actor = await resolvePlayer(ctx, args.guestToken);
-    const [room, player, member, members] = await Promise.all([
-      ctx.db.get(args.roomId),
-      ctx.db.get(actor.playerId),
-      ctx.db
-        .query("roomMembers")
-        .withIndex("by_room_player", (q) =>
-          q.eq("roomId", args.roomId).eq("playerId", actor.playerId),
-        )
-        .unique(),
-      ctx.db
-        .query("roomMembers")
-        .withIndex("by_room_player", (q) => q.eq("roomId", args.roomId))
-        .collect(),
-    ]);
-    if (!room || !player || !member || member.closedAt !== undefined) return null;
+): Promise<void> {
+  const [player, member, members] = await Promise.all([
+    ctx.db.get(input.playerId),
+    ctx.db
+      .query("roomMembers")
+      .withIndex("by_room_player", (q) =>
+        q.eq("roomId", input.roomId).eq("playerId", input.playerId),
+      )
+      .unique(),
+    ctx.db
+      .query("roomMembers")
+      .withIndex("by_room_player", (q) => q.eq("roomId", input.roomId))
+      .collect(),
+  ]);
+  if (!player || !member || member.closedAt !== undefined) return;
+  const activeCount = members.filter((candidate) => candidate.closedAt === undefined).length;
+  const now = Date.now();
+  await Promise.all([
+    ctx.scheduler.runAfter(0, internal.productEvents.emit, {
+      eventId: `${member._id}:session-start`,
+      eventName: "session_start",
+      occurredAt: now,
+      sessionId: input.roomId,
+      props: {
+        mode: "match",
+        new_visitor: Math.abs(player._creationTime - member.joinedAt) < 5_000,
+      },
+    }),
+    ctx.scheduler.runAfter(0, internal.productEvents.emit, {
+      eventId: `${member._id}:room-entry`,
+      eventName: input.eventName,
+      occurredAt: now,
+      sessionId: input.roomId,
+      props: { room_players: activeCount },
+    }),
+  ]);
+}
 
-    const activeCount = members.filter((candidate) => candidate.closedAt === undefined).length;
-    const eventName =
-      room.hostPlayerId === actor.playerId && member.seatIndex === 0
-        ? ("room_created" as const)
-        : ("room_joined" as const);
-    const now = Date.now();
-    await Promise.all([
-      ctx.scheduler.runAfter(0, internal.productEvents.emit, {
-        eventId: `${args.eventId}:session`,
-        eventName: "session_start",
-        occurredAt: now,
-        sessionId: args.roomId,
-        props: {
-          mode: "match",
-          new_visitor: Math.abs(player._creationTime - member.joinedAt) < 5_000,
-        },
-      }),
-      ctx.scheduler.runAfter(0, internal.productEvents.emit, {
-        eventId: args.eventId,
-        eventName,
-        occurredAt: now,
-        sessionId: args.roomId,
-        props: { room_players: activeCount },
-      }),
-    ]);
-    return null;
+/** Record an abandoned match after Parlor has committed the canonical reason. */
+export async function scheduleMatchAbandoned(
+  ctx: MutationCtx,
+  input: {
+    matchId: Id<"matches">;
+    reason: "hard-deadline" | "everyone-away" | "host-ended";
+    occurredAt: number;
   },
-});
+): Promise<void> {
+  const game = await ctx.db
+    .query("games")
+    .withIndex("by_match", (q) => q.eq("matchId", input.matchId))
+    .unique();
+  const completedRounds = game
+    ? await ctx.db
+        .query("rounds")
+        .withIndex("by_game", (q) => q.eq("gameId", game._id))
+        .filter((q) => q.neq(q.field("revealedAt"), undefined))
+        .collect()
+    : [];
+  await ctx.scheduler.runAfter(0, internal.productEvents.emit, {
+    eventId: `${input.matchId}:abandoned`,
+    eventName: "match_abandoned",
+    occurredAt: input.occurredAt,
+    sessionId: input.matchId,
+    props: { rounds_completed: completedRounds.length, reason: input.reason },
+  });
+}
 
 /** Aggregate-only operational readback. Player content and ids never leave. */
 export const summary = query({

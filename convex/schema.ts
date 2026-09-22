@@ -5,7 +5,7 @@ import {
   productEnvironmentValidator,
   productEventNameValidator,
   productEventPropsValidator,
-} from "./product-event-validators";
+} from "./product_event_validators";
 
 /**
  * Kindred composes application-local Parlor tables with its own game tables.

@@ -92,7 +92,7 @@ body::before {
 
 .ambient-light--teal {
   top: 30rem;
-  right: -9rem;
+  right: 0;
   background: var(--teal);
 }
 
@@ -190,8 +190,11 @@ button:active:not(:disabled) {
 }
 
 button:disabled {
+  color: var(--faint);
+  border-color: var(--line);
+  background: var(--night-raised);
   cursor: not-allowed;
-  opacity: 0.48;
+  opacity: 1;
   box-shadow: none;
 }
 
@@ -200,6 +203,12 @@ button.secondary {
   background: rgb(19 26 54 / 72%);
   border-color: var(--line-bright);
   box-shadow: none;
+}
+
+button.secondary:disabled {
+  color: var(--faint);
+  border-color: var(--line);
+  background: var(--night-raised);
 }
 
 button.secondary:hover:not(:disabled) {
@@ -336,7 +345,7 @@ code {
   box-shadow:
     0 1.5rem 5rem rgb(0 0 0 / 28%),
     inset 0 1px rgb(255 255 255 / 5%);
-  overflow: hidden;
+  overflow: clip;
 }
 
 .panel::after {

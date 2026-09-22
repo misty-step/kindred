@@ -1,0 +1,47 @@
+Scope: all 6 workspace projects
+? Verifying lockfile against supply-chain policies (764 entries)...
+✓ Lockfile passes supply-chain policies (764 entries in 2.1s)
+Lockfile is up to date, resolution step is skipped
+Already up to date
+
+Done in 4.8s using pnpm v11.25.0
+CONVEX_AGENT_MODE=anonymous mode is in beta, functionality may change in the future.
+▌ Developing against deployment:
+▌ [Local] Port 3210 • No Convex account (run npx convex login to link to a project)
+▌ └─ http://127.0.0.1:3210
+- Preparing Convex functions...
+
+[36mA minor update is available for Convex[39m [2m(1.45.0 → 1.46.0)[22m
+[2mChangelog:[22m [4mhttps://github.com/get-convex/convex-js/blob/main/CHANGELOG.md#changelog[24m
+Convex AI files are not installed. Run npx convex ai-files install to get started or npx convex ai-files disable to hide this message.
+✔ Added table indexes:
+  [+] adjudications.by_prompt_pair   promptId, pairKey, _creationTime
+  [+] answers.by_round   roundId, _creationTime
+  [+] answers.by_round_player   roundId, playerId, _creationTime
+  [+] games.by_match   matchId, _creationTime
+  [+] matchParticipants.by_match   matchId, _creationTime
+  [+] matchParticipants.by_match_player   matchId, playerId, _creationTime
+  [+] matchParticipants.by_match_seat   matchId, seatIndex, _creationTime
+  [+] matchParticipants.by_player   playerId, _creationTime
+  [+] matches.by_room_cycle   roomId, cycle, _creationTime
+  [+] matches.by_room_status   roomId, status, _creationTime
+  [+] matches.by_status_started_at   status, startedAt, _creationTime
+  [+] overrideConsents.by_round_pair   roundId, pairKey, _creationTime
+  [+] overrideConsents.by_round_player   roundId, playerId, _creationTime
+  [+] players.by_identity   identityKey, _creationTime
+  [+] players.by_kind   kind, _creationTime
+  [+] productEventQuarantine.by_recorded_at   recordedAt, _creationTime
+  [+] productEvents.by_environment_time   environment, occurredAt, _creationTime
+  [+] productEvents.by_event_id   eventId, _creationTime
+  [+] roomMembers.by_player   playerId, _creationTime
+  [+] roomMembers.by_player_open   playerId, closedAt, _creationTime
+  [+] roomMembers.by_room   roomId, _creationTime
+  [+] roomMembers.by_room_player   roomId, playerId, _creationTime
+  [+] roomMembers.by_room_seat   roomId, seatIndex, _creationTime
+  [+] rooms.by_code_open   code, closedAt, _creationTime
+  [+] rooms.by_host_open   hostPlayerId, closedAt, _creationTime
+  [+] roundResults.by_round   roundId, _creationTime
+  [+] rounds.by_game   gameId, _creationTime
+  [+] rounds.by_game_index   gameId, index, _creationTime
+✔ 06:45:03 Convex functions ready! (1.19s)
+EXIT_STATUS=0

@@ -18,7 +18,7 @@ test("brand ships editable square and 16-first optical marks", async () => {
     ["large", large],
     ["small", small],
     ["favicon", favicon],
-  ]) {
+  ] as const) {
     assert.match(svg, /viewBox="0 0 (?:16|64|512) (?:16|64|512)"/, `${name} must be square`);
     assert.doesNotMatch(svg, /<text\b/i, `${name} must be a non-wordmark symbol`);
   }
@@ -65,4 +65,15 @@ test("Fireflies tokens and Fraunces display type are part of the real surface", 
   assert.match(css, /--teal:\s*#[0-9a-f]{6}/i);
   assert.match(css, /Fraunces/);
   assert.match(css, /prefers-reduced-motion/);
+});
+
+test("mobile ambience cannot widen the viewport and disabled actions read as unavailable", async () => {
+  const css = await source("app/globals.css");
+  assert.match(css, /\.ambient-light--teal\s*\{[^}]*right:\s*0;/s);
+  assert.doesNotMatch(css, /\.shell\s*\{[^}]*overflow-x:/s);
+  assert.match(css, /\.panel\s*\{[^}]*overflow:\s*clip;/s);
+  assert.match(
+    css,
+    /button:disabled\s*\{[^}]*background:\s*var\(--night-raised\)/s,
+  );
 });

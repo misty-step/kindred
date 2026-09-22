@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "target": "remote production build",
+  "baseUrl": "http://localhost:3000",
+  "fixture": {
+    "label": "FIXTURE ONLY: local identical-answer judge",
+    "model": "fixture/identical-answer-judge",
+    "productionOutcome": false
+  },
+  "players": [
+    {
+      "context": "player-a",
+      "displayName": "Alice QA"
+    },
+    {
+      "context": "player-b",
+      "displayName": "Bob QA"
+    }
+  ],
+  "checks": {
+    "independentPlayers": true,
+    "transportReconnect": true,
+    "continuityReconnect": true,
+    "soulmateCompleted": true,
+    "hostTransfer": true,
+    "replay": true,
+    "hiveMindCompleted": true,
+    "hostEndedAbandonment": true,
+    "fixtureScoringLabelPresent": true,
+    "allRequiredJourneys": true
+  },
+  "steps": [
+    {
+      "name": "capture desktop lobby",
+      "status": "passed",
+      "startedAt": "2026-09-22T07:55:33.349Z",
+      "finishedAt": "2026-09-22T07:55:34.873Z"
+    },
+    {
+      "name": "capture mobile lobby",
+      "status": "passed",
+      "startedAt": "2026-09-22T07:55:34.873Z",
+      "finishedAt": "2026-09-22T07:55:36.042Z"
+    },
+    {
+      "name": "capture loading state",
+      "status": "passed",
+      "startedAt": "2026-09-22T07:55:36.042Z",
+      "finishedAt": "2026-09-22T07:55:37.066Z"
+    },
+    {
+      "name": "capture guest issuer error",
+      "status": "passed",
+      "startedAt": "2026-09-22T07:55:37.066Z",
+      "finishedAt": "2026-09-22T07:55:37.874Z"
+    },
+    {
+      "name": "capture icon optical sizes",
+      "status": "passed",
+      "startedAt": "2026-09-22T07:55:37.874Z",
+      "finishedAt": "2026-09-22T07:55:38.016Z"
+    },
+    {
+      "name": "two independent players create and join",
+      "status": "passed",
+      "startedAt": "2026-09-22T07:55:38.084Z",
+      "finishedAt": "2026-09-22T07:55:39.937Z"
+    },
+    {
+      "name": "transport and continuity reconnect",
+      "status": "passed",
+      "startedAt": "2026-09-22T07:55:39.937Z",
+      "finishedAt": "2026-09-22T07:55:41.483Z"
+    },
+    {
+      "name": "complete two-player Soulmate",
+      "status": "passed",
+      "startedAt": "2026-09-22T07:55:41.483Z",
+      "finishedAt": "2026-09-22T07:55:48.545Z"
+    },
+    {
+      "name": "transfer host after original host leaves",
+      "status": "passed",
+      "startedAt": "2026-09-22T07:55:48.545Z",
+      "finishedAt": "2026-09-22T07:55:49.547Z"
+    },
+    {
+      "name": "replay in two-player Hive Mind",
+      "status": "passed",
+      "startedAt": "2026-09-22T07:55:49.547Z",
+      "finishedAt": "2026-09-22T07:55:58.800Z"
+    },
+    {
+      "name": "host-ended abandonment closes room",
+      "status": "passed",
+      "startedAt": "2026-09-22T07:55:58.800Z",
+      "finishedAt": "2026-09-22T07:55:59.263Z"
+    }
+  ],
+  "screenshots": [
+    "01-desktop-lobby.png",
+    "02-mobile-lobby.png",
+    "03-desktop-loading.png",
+    "04-mobile-error.png",
+    "09-icon-optics.png",
+    "05-desktop-anonymous-reveal.png",
+    "06-mobile-named-reveal.png",
+    "07-desktop-host-transfer.png",
+    "08-desktop-final-record.png"
+  ],
+  "browserErrors": [],
+  "finishedAt": "2026-09-22T07:55:59.283Z"
+}

@@ -172,7 +172,9 @@ export default function Page() {
               <span className="status-orbit" aria-hidden="true" />
               <div>
                 <strong>{guest.loading ? "Making space for you…" : "We lost the connection."}</strong>
-                {guest.error && <p>{errorMessage(guest.error)}</p>}
+                {guest.error !== null && guest.error !== undefined && (
+                  <p>{errorMessage(guest.error)}</p>
+                )}
               </div>
               {!guest.loading && (
                 <button type="button" className="secondary" onClick={retryGuest}>
@@ -250,10 +252,12 @@ export default function Page() {
         </section>
       )}
 
-      <footer className="app-footer">
-        <span className="footer-spark" aria-hidden="true" />
-        <p>Your answer stays hidden until everyone is ready.</p>
-      </footer>
+      {!roomId && (
+        <footer className="app-footer">
+          <span className="footer-spark" aria-hidden="true" />
+          <p>Your answer stays hidden until everyone is ready.</p>
+        </footer>
+      )}
     </main>
   );
 }

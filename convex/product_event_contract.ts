@@ -16,7 +16,27 @@ export const KINDRED_EVENT_NAMES = [
 
 export type KindredEventName = (typeof KINDRED_EVENT_NAMES)[number];
 export type ProductEnvironment = "production" | "staging" | "test";
-export type ProductEventProps = Readonly<Record<string, string | number | boolean>>;
+export type ProductEventProps =
+  | Readonly<{ mode: "match"; new_visitor: boolean }>
+  | Readonly<{ room_players: number }>
+  | Readonly<{
+      room_players: number;
+      round_count: number;
+      game_mode: "hive-mind" | "soulmate";
+    }>
+  | Readonly<{ round_index: number; prompt_id: string }>
+  | Readonly<{ round_index: number; answer_length: number }>
+  | Readonly<{ round_index: number; result: "matched" | "unmatched" | "failed" }>
+  | Readonly<{ round_index: number; score: number }>
+  | Readonly<{ rounds_played: number; total_score: number }>
+  | Readonly<{
+      previous_result: "completed" | "abandoned";
+      game_mode: "hive-mind" | "soulmate";
+    }>
+  | Readonly<{
+      rounds_completed: number;
+      reason: "hard-deadline" | "everyone-away" | "host-ended";
+    }>;
 
 export type ProductEvent = Readonly<{
   eventId: string;
@@ -176,7 +196,8 @@ export function summarizeKindredEvents(
     if (row.eventName === "match_abandoned") abandonedMatches.add(row.sessionId);
     if (
       row.eventName === "round_adjudicated" &&
-      row.props["result"] === "failed"
+      "result" in row.props &&
+      row.props.result === "failed"
     ) {
       evaluatorFailures += 1;
     }

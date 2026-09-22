@@ -28,11 +28,13 @@ type Config = {
 };
 
 class SessionError extends Error {
-  constructor(
-    readonly status: number,
-    readonly code: string,
-  ) {
+  readonly status: number;
+  readonly code: string;
+
+  constructor(status: number, code: string) {
     super(code);
+    this.status = status;
+    this.code = code;
   }
 }
 
@@ -95,7 +97,8 @@ function configuration(): Config {
     if (keyId === parsed["activeKeyId"]) active = candidate;
   }
   if (!active) fail(503, "GUEST_ISSUER_UNCONFIGURED");
-  const secure = process.env.NODE_ENV === "production";
+  const localMode = process.env["KINDRED_LOCAL"] === "true";
+  const secure = process.env.NODE_ENV === "production" && !localMode;
   let url: URL;
   try {
     url = new URL(origin);

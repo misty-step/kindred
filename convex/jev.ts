@@ -174,7 +174,17 @@ export const failAttempt = internalMutation({
   args: { roundId: v.id("rounds"), attempts: v.number() },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
+    const round = await ctx.db.get(args.roundId);
     await ctx.db.patch(args.roundId, { attempts: args.attempts });
+    if (round) {
+      await ctx.scheduler.runAfter(0, internal.productEvents.emit, {
+        eventId: `${args.roundId}:adjudication-failed:${args.attempts}`,
+        eventName: "round_adjudicated",
+        occurredAt: Date.now(),
+        sessionId: round.matchId,
+        props: { round_index: round.index, result: "failed" },
+      });
+    }
     return null;
   },
 });
@@ -201,6 +211,7 @@ export const saveRoundResult = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
+    const round = await ctx.db.get(args.roundId);
     const existing = await ctx.db
       .query("roundResults")
       .withIndex("by_round", (q) => q.eq("roundId", args.roundId))
@@ -220,6 +231,26 @@ export const saveRoundResult = internalMutation({
       status: "revealed",
       revealedAt: args.revealedAt,
     });
+    if (round) {
+      const matched = args.clusters.some((cluster) => cluster.answers.length > 1);
+      const score = args.scores.reduce((sum, row) => sum + row.points, 0);
+      await Promise.all([
+        ctx.scheduler.runAfter(0, internal.productEvents.emit, {
+          eventId: `${args.roundId}:adjudicated`,
+          eventName: "round_adjudicated",
+          occurredAt: args.revealedAt,
+          sessionId: round.matchId,
+          props: { round_index: round.index, result: matched ? "matched" : "unmatched" },
+        }),
+        ctx.scheduler.runAfter(0, internal.productEvents.emit, {
+          eventId: `${args.roundId}:complete`,
+          eventName: "round_complete",
+          occurredAt: args.revealedAt,
+          sessionId: round.matchId,
+          props: { round_index: round.index, score },
+        }),
+      ]);
+    }
     return null;
   },
 });

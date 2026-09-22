@@ -90,6 +90,7 @@ export interface HouseAnswer {
  */
 export function normalizeAnswer(raw: string): string {
   let text = raw.normalize("NFKC").toLowerCase();
+  // oxlint-disable-next-line eslint/no-control-regex -- Strip ASCII controls before scoring.
   text = text.replace(/[\u0000-\u001f\u007f]/g, " ");
   const edgePunctuation = new Set([
     ".", "!", "?", ";", ":", ",", "'", '"', "`",

@@ -56,6 +56,11 @@ export const start = mutation({
   returns: v.id("matches"),
   handler: async (ctx, args) => {
     const actor = await resolvePlayer(ctx, args.guestToken);
+    const previousMatch = await ctx.db
+      .query("matches")
+      .withIndex("by_room_cycle", (q) => q.eq("roomId", args.roomId))
+      .order("desc")
+      .first();
     const match = await beginMatch(ctx, {
       roomId: args.roomId,
       actor,
@@ -85,7 +90,7 @@ export const start = mutation({
       promptIds,
       ...(pairs !== undefined ? { pairs } : {}),
     });
-    await ctx.db.insert("rounds", {
+    const roundId = await ctx.db.insert("rounds", {
       gameId,
       matchId: match.id,
       index: 0,
@@ -93,6 +98,38 @@ export const start = mutation({
       status: "answering",
       attempts: 0,
     });
+    const eventTasks = [
+      ctx.scheduler.runAfter(0, internal.productEvents.emit, {
+        eventId: `${match.id}:start`,
+        eventName: "match_start" as const,
+        occurredAt: match.startedAt,
+        sessionId: match.id,
+        props: {
+          room_players: participants.length,
+          round_count: promptIds.length,
+          game_mode: args.mode,
+        },
+      }),
+      ctx.scheduler.runAfter(0, internal.productEvents.emit, {
+        eventId: `${roundId}:start`,
+        eventName: "round_start" as const,
+        occurredAt: match.startedAt,
+        sessionId: match.id,
+        props: { round_index: 0, prompt_id: promptIds[0]! },
+      }),
+    ];
+    if (previousMatch?.status === "completed" || previousMatch?.status === "abandoned") {
+      eventTasks.push(
+        ctx.scheduler.runAfter(0, internal.productEvents.emit, {
+          eventId: `${match.id}:replay`,
+          eventName: "replay" as const,
+          occurredAt: match.startedAt,
+          sessionId: match.id,
+          props: { previous_result: previousMatch.status, game_mode: args.mode },
+        }),
+      );
+    }
+    await Promise.all(eventTasks);
     return match.id;
   },
 });
@@ -138,7 +175,7 @@ export const submitAnswer = mutation({
     if (!validation.ok) {
       throw new ConvexError({ code: validation.code });
     }
-    await ctx.db.insert("answers", {
+    const answerId = await ctx.db.insert("answers", {
       roundId: round._id,
       playerId: actor.playerId,
       text: args.text.trim(),
@@ -152,6 +189,13 @@ export const submitAnswer = mutation({
       .query("matchParticipants")
       .withIndex("by_match", (q) => q.eq("matchId", args.matchId))
       .collect();
+    await ctx.scheduler.runAfter(0, internal.productEvents.emit, {
+      eventId: `${answerId}:submitted`,
+      eventName: "answer_submitted",
+      occurredAt: Date.now(),
+      sessionId: args.matchId,
+      props: { round_index: round.index, answer_length: validation.normalized.length },
+    });
     if (answers.length >= participants.length) {
       await ctx.db.patch(round._id, { status: "adjudicating" });
       await ctx.scheduler.runAfter(0, internal.jev.adjudicateRound, {
@@ -351,13 +395,20 @@ export const advance = mutation({
     }
     const nextIndex = round.index + 1;
     if (nextIndex < game.promptIds.length) {
-      await ctx.db.insert("rounds", {
+      const nextRoundId = await ctx.db.insert("rounds", {
         gameId: game._id,
         matchId: args.matchId,
         index: nextIndex,
         promptId: game.promptIds[nextIndex]!,
         status: "answering",
         attempts: 0,
+      });
+      await ctx.scheduler.runAfter(0, internal.productEvents.emit, {
+        eventId: `${nextRoundId}:start`,
+        eventName: "round_start",
+        occurredAt: Date.now(),
+        sessionId: args.matchId,
+        props: { round_index: nextIndex, prompt_id: game.promptIds[nextIndex]! },
       });
       return null;
     }
@@ -407,6 +458,18 @@ export const advance = mutation({
       });
     }
     await completeMatch(ctx, { matchId: args.matchId, actor });
+    const totalScore = results.reduce(
+      (sum, result) =>
+        sum + result.scores.reduce((roundSum, score) => roundSum + score.points, 0),
+      0,
+    );
+    await ctx.scheduler.runAfter(0, internal.productEvents.emit, {
+      eventId: `${args.matchId}:complete`,
+      eventName: "match_complete",
+      occurredAt: Date.now(),
+      sessionId: args.matchId,
+      props: { rounds_played: rounds.length, total_score: totalScore },
+    });
     return null;
   },
 });

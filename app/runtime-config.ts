@@ -1,4 +1,9 @@
 export type ProductEnvironment = "production" | "staging" | "test";
+export type RuntimeAttribution = Readonly<{
+  environment: ProductEnvironment;
+  release: string;
+}>;
+export type RuntimeEnvironment = Record<string, string | undefined>;
 
 const PRODUCT_ENVIRONMENTS = new Set<ProductEnvironment>([
   "production",
@@ -48,4 +53,20 @@ export function parseSentryDsn(value: string | undefined): string | null {
     throw new Error("SENTRY_DSN must be a valid public HTTPS project DSN.");
   }
   return value;
+}
+
+/** Runtime attribution fails closed outside the explicit isolated test mode. */
+export function resolveRuntimeAttribution(
+  environment: RuntimeEnvironment,
+): RuntimeAttribution {
+  const productEnvironment = parseProductEnvironment(environment["PRODUCT_ENVIRONMENT"]);
+  const release = parseRelease(environment["SENTRY_RELEASE"]);
+  const localRelease =
+    productEnvironment === "test" &&
+    environment["KINDRED_LOCAL"] === "true" &&
+    release === "local";
+  if (!localRelease && !/^[0-9a-f]{40}$/i.test(release)) {
+    throw new Error("SENTRY_RELEASE must be the full 40-character candidate commit SHA.");
+  }
+  return { environment: productEnvironment, release };
 }
