@@ -53,6 +53,49 @@ export type ProductEvent = Readonly<{
   props: ProductEventProps;
 }>;
 
+/**
+ * Exact session ids bound to both a named supervised-production run and
+ * overlapping telemetry. See docs/production-analytics-fixture-exclusions.md.
+ */
+export const KNOWN_PRODUCTION_FIXTURE_SESSION_IDS = [
+  "k57agtpm30kn5ktpawsvb00ba58exq3m",
+  "jn71m1d8747khhn92vkyxtnf258ewv0n",
+  "jn71tpe4grfe832g4hkza4a32n8ewa4e",
+] as const;
+
+const productionFixtureSessionIds = new Set<string>(
+  KNOWN_PRODUCTION_FIXTURE_SESSION_IDS,
+);
+
+export function partitionProductEventsForAnalytics(
+  rows: readonly ProductEvent[],
+  environment: ProductEnvironment,
+): Readonly<{
+  fixtureEvents: readonly ProductEvent[];
+  unclassifiedEvents: readonly ProductEvent[];
+  /** @deprecated This is an alias for unclassifiedEvents, not verified-human traffic. */
+  genuineEvents: readonly ProductEvent[];
+}> {
+  const fixtureEvents: ProductEvent[] = [];
+  const unclassifiedEvents: ProductEvent[] = [];
+  for (const row of rows) {
+    if (row.environment !== environment) continue;
+    if (
+      environment === "production" &&
+      productionFixtureSessionIds.has(row.sessionId)
+    ) {
+      fixtureEvents.push(row);
+    } else {
+      unclassifiedEvents.push(row);
+    }
+  }
+  return {
+    fixtureEvents,
+    unclassifiedEvents,
+    genuineEvents: unclassifiedEvents,
+  };
+}
+
 type Validation =
   { ok: true; value: ProductEvent } | { ok: false; reason: string };
 type PropRule = (value: unknown) => boolean;

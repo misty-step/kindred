@@ -205,4 +205,70 @@ describe("Kindred lifecycle product events", () => {
       }),
     );
   });
+
+  it("summarizes only receipt-bound production fixtures without writing rows", async () => {
+    const t = convexTest(schema, modules);
+    const receiptBoundSessionIds = [
+      "k57agtpm30kn5ktpawsvb00ba58exq3m",
+      "jn71m1d8747khhn92vkyxtnf258ewv0n",
+      "jn71tpe4grfe832g4hkza4a32n8ewa4e",
+    ] as const;
+    const uncertainSessionIds = [
+      "k57dq3shp968a2pa38xkzva6bh8ewep0",
+      "jn76ytbj7bhnsctyhs265dg5gx8ewtse",
+    ] as const;
+    const productionSessionIds = [
+      ...receiptBoundSessionIds,
+      ...uncertainSessionIds,
+      `${receiptBoundSessionIds.at(-1)}-near-match`,
+      "summary-unclassified-session",
+    ];
+
+    vi.stubEnv("PRODUCT_ENVIRONMENT", "production");
+    for (const [index, sessionId] of productionSessionIds.entries()) {
+      await t.mutation(internal.productEvents.emit, {
+        eventId: `summary-production-event-${index}`,
+        eventName: "match_start",
+        occurredAt: Date.parse("2026-09-22T15:10:53.661Z") + index,
+        sessionId,
+        props: {
+          room_players: 2,
+          round_count: 5,
+          game_mode: "soulmate",
+        },
+      });
+    }
+    vi.stubEnv("PRODUCT_ENVIRONMENT", "staging");
+    await t.mutation(internal.productEvents.emit, {
+      eventId: "summary-staging-event",
+      eventName: "match_start",
+      occurredAt: Date.parse("2026-09-22T15:10:53.700Z"),
+      sessionId: receiptBoundSessionIds[0],
+      props: {
+        room_players: 2,
+        round_count: 5,
+        game_mode: "soulmate",
+      },
+    });
+    const rowsBefore = await t.run((ctx) =>
+      ctx.db.query("productEvents").collect(),
+    );
+
+    const summary = await t.query(api.productEvents.summary, {
+      environment: "production",
+    });
+    const rowsAfter = await t.run((ctx) =>
+      ctx.db.query("productEvents").collect(),
+    );
+
+    expect(summary).toMatchObject({
+      sampledEvents: 7,
+      fixtureEventsExcluded: 3,
+      unclassifiedEventsRetained: 4,
+      genuineEventsRetained: 4,
+      sessionsStarted: 4,
+    });
+    expect(rowsBefore).toHaveLength(8);
+    expect(rowsAfter).toEqual(rowsBefore);
+  });
 });
