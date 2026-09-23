@@ -139,8 +139,19 @@ input {
   cursor: pointer;
 }
 
-.bar-button:hover {
-  border-color: var(--ink);
+/* Hover only where a pointer can hover; touch screens keep a tapped button unchanged. */
+@media (hover: hover) {
+  .bar-button:hover {
+    border-color: var(--ink);
+  }
+  .btn:hover:not(:disabled) {
+    border-color: #333;
+    background: #333;
+  }
+  .btn.secondary:hover:not(:disabled) {
+    border-color: var(--ink);
+    background: var(--wash);
+  }
 }
 
 main {
@@ -303,19 +314,9 @@ h2 {
   cursor: pointer;
 }
 
-.btn:hover:not(:disabled) {
-  border-color: #333;
-  background: #333;
-}
-
 .btn.secondary {
   background: var(--paper);
   color: var(--ink);
-}
-
-.btn.secondary:hover:not(:disabled) {
-  border-color: var(--ink);
-  background: var(--wash);
 }
 
 .btn:disabled {
