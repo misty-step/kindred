@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import manifest from "../app/manifest.ts";
 
 const root = new URL("../", import.meta.url);
 const pngSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
@@ -41,4 +42,17 @@ test("declared Apple and social metadata images are real PNGs at advertised dime
     social,
     "Apple and social images must use their intended canvases",
   );
+});
+
+test("every PNG icon the web manifest advertises exists at its declared size", async () => {
+  const icons = manifest().icons ?? [];
+  assert.ok(
+    icons.some((icon) => icon.purpose === "maskable"),
+    "installable app needs a maskable icon",
+  );
+  for (const icon of icons) {
+    if (icon.type !== "image/png") continue;
+    const [width, height] = String(icon.sizes).split("x").map(Number);
+    await assertPng(`public${icon.src}`, width!, height!);
+  }
 });

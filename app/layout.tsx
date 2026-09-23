@@ -21,8 +21,12 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml", sizes: "any" }],
-    shortcut: "/icon.svg",
     apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "180x180" }],
+  },
+  appleWebApp: {
+    capable: true,
+    title: "Kindred",
+    statusBarStyle: "default",
   },
   openGraph: {
     type: "website",
