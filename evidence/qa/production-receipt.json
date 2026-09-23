@@ -1,0 +1,532 @@
+{
+  "schemaVersion": 2,
+  "baseUrl": "https://kindred.mistystep.io",
+  "judge": "live Jev",
+  "checks": {
+    "room code issued": "pass",
+    "lobby states the rule": "pass",
+    "g1-r1 secrecy": "pass",
+    "synonym pair scores (sofa/couch)": "pass",
+    "crowd of three scores nothing": "pass",
+    "two synonym pairs in one round": "pass",
+    "related but different answers do not pair (coffee/tea)": "pass",
+    "last question offers the result": "pass",
+    "clean winner named": "pass",
+    "share names everyone and has no answer text": "pass",
+    "tie offers one more question": "pass",
+    "untied pair scores nothing in the extra question": "pass",
+    "won on the extra question": "pass",
+    "duo reveal reads as co-op": "pass",
+    "duo never gets an extra question": "pass",
+    "duo end counts matches": "pass",
+    "no browser errors": "pass",
+    "allRequiredJourneys": "pass"
+  },
+  "rounds": [
+    {
+      "label": "g1-r1",
+      "prompt": "A sound that means trouble",
+      "answers": ["sofa", "couch", "chair", "lamp", "table"],
+      "head": "You and Ben.",
+      "subs": ["Nobody else said it. +1 for you both."],
+      "groups": [
+        {
+          "label": "A pair, scores",
+          "answers": ["sofa", "couch"]
+        }
+      ],
+      "standings": ["1 You and Ben +1 1"],
+      "nextLabel": "Next question"
+    },
+    {
+      "label": "g1-r2",
+      "prompt": "A reason to be late",
+      "answers": ["dog", "dog", "dog", "cat", "bird"],
+      "head": "Too many.",
+      "subs": ["You, Ben and Cleo all said dog. Nobody scores."],
+      "groups": [
+        {
+          "label": "3 people, nobody scores",
+          "answers": ["dog", "dog", "dog"]
+        }
+      ],
+      "standings": ["1 You and Ben 1"],
+      "nextLabel": "Next question"
+    },
+    {
+      "label": "g1-r3",
+      "prompt": "A fruit that’s fun to say",
+      "answers": ["TV", "television", "car", "automobile", "bus"],
+      "head": "You and Ben.",
+      "subs": ["Nobody else said it. +1 for you both.", "Dev and Cleo paired."],
+      "groups": [
+        {
+          "label": "A pair, scores",
+          "answers": ["television", "TV"]
+        },
+        {
+          "label": "A pair, scores",
+          "answers": ["automobile", "car"]
+        }
+      ],
+      "standings": ["1 You and Ben +1 2", "2 Cleo and Dev +1 1"],
+      "nextLabel": "Next question"
+    },
+    {
+      "label": "g1-r4",
+      "prompt": "A breakfast cereal",
+      "answers": ["pizza", "apple", "apple", "banana", "grape"],
+      "head": "Just you.",
+      "subs": ["Nobody else said pizza.", "Ben and Cleo paired."],
+      "groups": [
+        {
+          "label": "A pair, scores",
+          "answers": ["apple", "apple"]
+        }
+      ],
+      "standings": ["1 You and Ben 2", "2 Ben and Cleo +1 1", "Cleo and Dev 1"],
+      "nextLabel": "Next question"
+    },
+    {
+      "label": "g1-r5",
+      "prompt": "A smell from your childhood",
+      "answers": ["coffee", "tea", "water", "juice", "milk"],
+      "head": "Just you.",
+      "subs": ["Nobody else said coffee."],
+      "groups": [],
+      "standings": ["1 You and Ben 2", "2 Ben and Cleo 1", "Cleo and Dev 1"],
+      "nextLabel": "Next question"
+    },
+    {
+      "label": "g1-r6",
+      "prompt": "A famous duo",
+      "answers": ["whisky", "whiskey", "kid", "child", "train"],
+      "head": "You and Ben.",
+      "subs": ["Nobody else said it. +1 for you both.", "Cleo and Dev paired."],
+      "groups": [
+        {
+          "label": "A pair, scores",
+          "answers": ["kid", "child"]
+        },
+        {
+          "label": "A pair, scores",
+          "answers": ["whisky", "whiskey"]
+        }
+      ],
+      "standings": [
+        "1 You and Ben +1 3",
+        "2 Cleo and Dev +1 2",
+        "3 Ben and Cleo 1"
+      ],
+      "nextLabel": "See who won"
+    },
+    {
+      "label": "g2-r1",
+      "prompt": "Something you’d find in a junk drawer",
+      "answers": ["sofa", "couch", "red", "blue", "green"],
+      "head": "You and Ben.",
+      "subs": ["Nobody else said it. +1 for you both."],
+      "groups": [
+        {
+          "label": "A pair, scores",
+          "answers": ["sofa", "couch"]
+        }
+      ],
+      "standings": ["1 You and Ben +1 1"],
+      "nextLabel": "Next question"
+    },
+    {
+      "label": "g2-r2",
+      "prompt": "A job you’d be terrible at",
+      "answers": ["hat", "shoe", "car", "automobile", "sock"],
+      "head": "Just you.",
+      "subs": ["Nobody else said hat.", "Dev and Cleo paired."],
+      "groups": [
+        {
+          "label": "A pair, scores",
+          "answers": ["automobile", "car"]
+        }
+      ],
+      "standings": ["1 You and Ben 1", "Cleo and Dev +1 1"],
+      "nextLabel": "Next question"
+    },
+    {
+      "label": "g2-r3",
+      "prompt": "The worst thing to step on",
+      "answers": ["TV", "television", "kid", "child", "bus"],
+      "head": "You and Ben.",
+      "subs": ["Nobody else said it. +1 for you both.", "Dev and Cleo paired."],
+      "groups": [
+        {
+          "label": "A pair, scores",
+          "answers": ["TV", "television"]
+        },
+        {
+          "label": "A pair, scores",
+          "answers": ["child", "kid"]
+        }
+      ],
+      "standings": ["1 You and Ben +1 2", "Cleo and Dev +1 2"],
+      "nextLabel": "Next question"
+    },
+    {
+      "label": "g2-r4",
+      "prompt": "A fruit that’s fun to say",
+      "answers": ["one", "two", "three", "four", "five"],
+      "head": "Just you.",
+      "subs": ["Nobody else said one."],
+      "groups": [],
+      "standings": ["1 You and Ben 2", "Cleo and Dev 2"],
+      "nextLabel": "Next question"
+    },
+    {
+      "label": "g2-r5",
+      "prompt": "A breakfast cereal",
+      "answers": ["north", "south", "east", "west", "up"],
+      "head": "Just you.",
+      "subs": ["Nobody else said north."],
+      "groups": [],
+      "standings": ["1 You and Ben 2", "Cleo and Dev 2"],
+      "nextLabel": "Next question"
+    },
+    {
+      "label": "g2-r6",
+      "prompt": "A board game everyone owns",
+      "answers": ["cat", "dog", "bird", "fish", "mouse"],
+      "head": "Just you.",
+      "subs": [
+        "Nobody else said cat.",
+        "Tied: You and Ben; Cleo and Dev. One more question decides it."
+      ],
+      "groups": [],
+      "standings": ["1 You and Ben 2", "Cleo and Dev 2"],
+      "nextLabel": "One more question"
+    },
+    {
+      "label": "g2-extra",
+      "prompt": "A famous duo",
+      "answers": ["whisky", "whiskey", "lamp", "rug", "lamp"],
+      "head": "You and Ben.",
+      "subs": ["Nobody else said it. +1 for you both."],
+      "groups": [
+        {
+          "label": "A pair, scores",
+          "answers": ["whiskey", "whisky"]
+        },
+        {
+          "label": "A pair, does not score",
+          "answers": ["lamp", "lamp"]
+        }
+      ],
+      "standings": ["1 You and Ben +1 3", "2 Cleo and Dev 2"],
+      "nextLabel": "See who won"
+    },
+    {
+      "label": "g3-r1",
+      "prompt": "Something with a lot of buttons",
+      "answers": ["sofa", "couch"],
+      "head": "Same thing.",
+      "subs": ["You and Gus both said couch.", "Matched 1 of 1 so far."],
+      "groups": [
+        {
+          "label": "A pair, scores",
+          "answers": ["couch", "sofa"]
+        }
+      ],
+      "standings": [],
+      "nextLabel": "Next question"
+    },
+    {
+      "label": "g3-r2",
+      "prompt": "Something you’d find in a junk drawer",
+      "answers": ["tea", "coffee"],
+      "head": "Different things.",
+      "subs": ["Gus said coffee.", "Matched 1 of 2 so far."],
+      "groups": [],
+      "standings": [],
+      "nextLabel": "Next question"
+    },
+    {
+      "label": "g3-r3",
+      "prompt": "A sound that means trouble",
+      "answers": ["TV", "television"],
+      "head": "Same thing.",
+      "subs": ["You and Gus both said television.", "Matched 2 of 3 so far."],
+      "groups": [
+        {
+          "label": "A pair, scores",
+          "answers": ["TV", "television"]
+        }
+      ],
+      "standings": [],
+      "nextLabel": "Next question"
+    },
+    {
+      "label": "g3-r4",
+      "prompt": "A reason to be late",
+      "answers": ["kid", "child"],
+      "head": "Same thing.",
+      "subs": ["You and Gus both said child.", "Matched 3 of 4 so far."],
+      "groups": [
+        {
+          "label": "A pair, scores",
+          "answers": ["kid", "child"]
+        }
+      ],
+      "standings": [],
+      "nextLabel": "Next question"
+    },
+    {
+      "label": "g3-r5",
+      "prompt": "A song everyone knows the words to",
+      "answers": ["up", "down"],
+      "head": "Different things.",
+      "subs": ["Gus said down.", "Matched 3 of 5 so far."],
+      "groups": [],
+      "standings": [],
+      "nextLabel": "Next question"
+    },
+    {
+      "label": "g3-r6",
+      "prompt": "A word your grandparent says",
+      "answers": ["car", "automobile"],
+      "head": "Same thing.",
+      "subs": ["You and Gus both said automobile.", "Matched 4 of 6 so far."],
+      "groups": [
+        {
+          "label": "A pair, scores",
+          "answers": ["car", "automobile"]
+        }
+      ],
+      "standings": [],
+      "nextLabel": "See results"
+    }
+  ],
+  "shots": [
+    {
+      "name": "01-home",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "02-name",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "03-lobby-alone",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "04-join",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "05-lobby-host",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "06-lobby-guest",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "07-question",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "08-room-sheet",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "g1-r1-waiting",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "09-reveal-pair",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "10-reveal-single-guest",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "11-reveal-crowd",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "12-reveal-two-pairs",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "13-reveal-nobody",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "14-end-winner",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "15-end-guest",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "16-reveal-tied",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "17-extra-question",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "18-extra-reveal-untied-pair",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "19-end-extra",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "20-duo-lobby-desktop",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "21-duo-reveal-desktop-reduced-motion",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "22-duo-end-desktop",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "23-duo-end-phone",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflow": false,
+      "violations": []
+    }
+  ],
+  "browserErrors": [],
+  "target": "production https://kindred.mistystep.io",
+  "release": "a8ae1b2373cd72e19f6f950633e52a104dd0e6fc",
+  "runner": "exe.dev kindred-prod-qa",
+  "window": {
+    "start": "2026-09-23T21:43:21Z",
+    "end": "2026-09-23T21:45:57Z"
+  },
+  "analytics": "sessions from this run are left unclassified (see docs/production-analytics-fixture-exclusions.md)"
+}

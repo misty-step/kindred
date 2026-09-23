@@ -964,9 +964,13 @@ function Outcome(props: {
         ?.text ?? "";
     const matched = mineGroup?.kind === "pair";
     head = matched ? "Same thing." : "Different things.";
-    sub = matched
-      ? `You and ${nameOf(other)} both said ${otherText}.`
-      : `${nameOf(other)} said ${otherText}.`;
+    const sameWords =
+      myText.trim().toLowerCase() === otherText.trim().toLowerCase();
+    sub = !matched
+      ? `${nameOf(other)} said ${otherText}.`
+      : sameWords
+        ? `You and ${nameOf(other)} both said ${otherText}.`
+        : `You said ${myText}. ${nameOf(other)} said ${otherText}.`;
   } else {
     const mine: MyGroup =
       mineGroup?.kind === "pair"
