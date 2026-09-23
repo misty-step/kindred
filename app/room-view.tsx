@@ -241,7 +241,12 @@ export function RoomView({ roomId, guestToken, joinUrl, onExit }: Props) {
         </div>
       </section>
     );
-  } else if (match === null) {
+  } else if (
+    match === null ||
+    // A finished match without its game record (none survives from before the
+    // pair rule) leaves the room ready for a new game.
+    (!game && !("spectator" in match) && match.status !== "active")
+  ) {
     body = (
       <Lobby
         code={view.room.code}
