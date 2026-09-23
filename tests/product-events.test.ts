@@ -22,7 +22,7 @@ function event(overrides: Record<string, unknown> = {}) {
     sessionId: "session_opaque",
     actorId: null,
     schemaVersion: 1,
-    props: { room_players: 4, round_count: 5, game_mode: "hive-mind" },
+    props: { room_players: 4, round_count: 6 },
     ...overrides,
   };
 }
@@ -94,19 +94,14 @@ test("event-specific runtime validation rejects malformed measurements", () => {
     () =>
       buildProductEvent(
         event({
-          props: { room_players: -1, round_count: 5, game_mode: "hive-mind" },
+          props: { room_players: -1, round_count: 6 },
         }),
       ),
     /props/,
   );
   assert.throws(
-    () =>
-      buildProductEvent(
-        event({
-          props: { room_players: 4, round_count: 5, game_mode: "unknown" },
-        }),
-      ),
-    /props/,
+    () => buildProductEvent(event({ schemaVersion: 2 })),
+    /schemaVersion/,
   );
   assert.throws(
     () => buildProductEvent(event({ occurredAt: "yesterday" })),
@@ -128,8 +123,7 @@ test("summary excludes test traffic, deduplicates, and exposes replay and failur
   const rows = [
     row("event_0001", "match_start", "session_01", {
       room_players: 3,
-      round_count: 5,
-      game_mode: "hive-mind",
+      round_count: 6,
     }),
     row("event_0002", "answer_submitted", "session_01", {
       round_index: 0,
@@ -140,12 +134,11 @@ test("summary excludes test traffic, deduplicates, and exposes replay and failur
       score: 2,
     }),
     row("event_0004", "match_complete", "session_01", {
-      rounds_played: 5,
+      rounds_played: 6,
       total_score: 8,
     }),
     row("event_0005", "replay", "session_02", {
       previous_result: "completed",
-      game_mode: "hive-mind",
     }),
     row("event_0006", "match_abandoned", "session_03", {
       rounds_completed: 2,
@@ -157,8 +150,7 @@ test("summary excludes test traffic, deduplicates, and exposes replay and failur
     }),
     row("event_0001", "match_start", "session_01", {
       room_players: 3,
-      round_count: 5,
-      game_mode: "hive-mind",
+      round_count: 6,
     }),
     row(
       "event_test1",
@@ -166,8 +158,7 @@ test("summary excludes test traffic, deduplicates, and exposes replay and failur
       "session_test",
       {
         room_players: 2,
-        round_count: 8,
-        game_mode: "hive-mind",
+        round_count: 6,
       },
       "test",
     ),

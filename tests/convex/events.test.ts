@@ -76,12 +76,6 @@ async function playRound(
     text: "moon",
   });
   await flush(t);
-  await t.mutation(api.game.revealNames, {
-    roomId,
-    matchId,
-    roundId,
-    guestToken,
-  });
   await t.mutation(api.game.advance, {
     roomId,
     matchId,
@@ -132,17 +126,15 @@ describe("Kindred lifecycle product events", () => {
     await t.mutation(api.game.start, {
       roomId: room.roomId,
       guestToken: hostToken,
-      mode: "soulmate",
     });
     await flush(t);
-    for (let round = 0; round < 5; round += 1) {
+    for (let round = 0; round < 6; round += 1) {
       await playRound(t, room.roomId, hostToken, guestToken);
     }
 
     await t.mutation(api.game.start, {
       roomId: room.roomId,
       guestToken: hostToken,
-      mode: "hive-mind",
     });
     await flush(t);
     await t.mutation(api.rooms.closeRoom, {
@@ -159,7 +151,10 @@ describe("Kindred lifecycle product events", () => {
     expect(names).toContain("room_joined");
     expect(names.filter((name) => name === "session_start")).toHaveLength(2);
     expect(names.filter((name) => name === "match_start")).toHaveLength(2);
-    expect(names.filter((name) => name === "round_complete")).toHaveLength(5);
+    expect(names.filter((name) => name === "round_complete")).toHaveLength(6);
+    expect(
+      events.find((event) => event.eventName === "match_complete")?.props,
+    ).toEqual({ rounds_played: 6, total_score: 6 });
     expect(names).toContain("match_complete");
     expect(names).toContain("replay");
     expect(names).toContain("match_abandoned");
@@ -181,7 +176,6 @@ describe("Kindred lifecycle product events", () => {
     await t.mutation(api.game.start, {
       roomId: room.roomId,
       guestToken: hostToken,
-      mode: "hive-mind",
     });
     const state = await t.query(api.game.view, {
       roomId: room.roomId,
@@ -233,8 +227,7 @@ describe("Kindred lifecycle product events", () => {
         sessionId,
         props: {
           room_players: 2,
-          round_count: 5,
-          game_mode: "soulmate",
+          round_count: 6,
         },
       });
     }
@@ -246,8 +239,7 @@ describe("Kindred lifecycle product events", () => {
       sessionId: receiptBoundSessionIds[0],
       props: {
         room_players: 2,
-        round_count: 5,
-        game_mode: "soulmate",
+        round_count: 6,
       },
     });
     const rowsBefore = await t.run((ctx) =>
@@ -270,5 +262,166 @@ describe("Kindred lifecycle product events", () => {
     });
     expect(rowsBefore).toHaveLength(8);
     expect(rowsAfter).toEqual(rowsBefore);
+  });
+  it("scores a three-player exact pair and limits one extra round to tied leaders", async () => {
+    // The fixture judge finds distinct canonical texts different.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+        const body = JSON.parse(String(init?.body)) as {
+          questions: Record<string, unknown>;
+        };
+        return Response.json({
+          answers: Object.fromEntries(
+            Object.keys(body.questions).map((name) => [
+              name,
+              { type: "noul", noul: 0.01 },
+            ]),
+          ),
+        });
+      }),
+    );
+    const three = await fixture();
+    const thirdToken = await token("third-player");
+    const joined = await three.t.mutation(api.rooms.joinRoom, {
+      code: three.room.code,
+      displayName: "Third",
+      guestToken: thirdToken,
+    });
+    if (!("roomId" in joined)) throw new Error(joined.code);
+    const threeMatch = await three.t.mutation(api.game.start, {
+      roomId: three.room.roomId,
+      guestToken: three.hostToken,
+    });
+    const first = await three.t.query(api.game.view, {
+      roomId: three.room.roomId,
+      guestToken: three.hostToken,
+    });
+    if (!first.match || !("round" in first.match) || !first.match.round)
+      throw new Error("round missing");
+    expect(first.match.round.answeredPlayerIds).toEqual([]);
+    const firstRoundId = first.match.round.id;
+    for (const [guestToken, text] of [
+      [three.hostToken, "moon"],
+      [three.guestToken, "moon"],
+      [thirdToken, "sun"],
+    ]) {
+      await three.t.mutation(api.game.submitAnswer, {
+        roomId: three.room.roomId,
+        matchId: threeMatch,
+        roundId: firstRoundId,
+        guestToken: guestToken!,
+        text: text!,
+      });
+      const waiting = await three.t.query(api.game.view, {
+        roomId: three.room.roomId,
+        guestToken: three.hostToken,
+      });
+      if (!waiting.match || !("round" in waiting.match))
+        throw new Error("round missing");
+      if (waiting.match.round?.status !== "revealed")
+        expect(waiting.match.reveal).toBeNull();
+    }
+    await flush(three.t);
+    const revealed = await three.t.query(api.game.view, {
+      roomId: three.room.roomId,
+      guestToken: thirdToken,
+    });
+    if (!revealed.match || !("standings" in revealed.match))
+      throw new Error("standings missing");
+    expect(revealed.match.standings).toMatchObject([{ total: 1, delta: 1 }]);
+    expect(
+      revealed.match.reveal?.groups.map(({ kind, scored }) => ({
+        kind,
+        scored,
+      })),
+    ).toEqual([
+      { kind: "pair", scored: true },
+      { kind: "single", scored: false },
+    ]);
+
+    const four = await fixture();
+    const extraTokens = [await token("third-tie"), await token("fourth-tie")];
+    for (const [index, guestToken] of extraTokens.entries()) {
+      const member = await four.t.mutation(api.rooms.joinRoom, {
+        code: four.room.code,
+        displayName: `Extra ${index}`,
+        guestToken,
+      });
+      if (!("roomId" in member)) throw new Error(member.code);
+    }
+    const players = [four.hostToken, four.guestToken, ...extraTokens];
+    const matchId = await four.t.mutation(api.game.start, {
+      roomId: four.room.roomId,
+      guestToken: four.hostToken,
+    });
+    for (let index = 0; index <= 6; index += 1) {
+      const before = await four.t.query(api.game.view, {
+        roomId: four.room.roomId,
+        guestToken: four.hostToken,
+      });
+      if (!before.match || !("round" in before.match) || !before.match.round)
+        throw new Error("round missing");
+      expect(before.match.round.index).toBe(index);
+      expect(before.match.round.tiebreak).toBe(index === 6);
+      const currentRoundId = before.match.round.id;
+      if (index === 6) expect(before.match.tiedPairs).toHaveLength(2);
+      const texts =
+        index === 0
+          ? ["moon", "moon", "sun", "sun"]
+          : index === 6
+            ? ["star", "other", "star", "third"]
+            : players.map((_, seat) => `unique ${index} ${seat}`);
+      for (const [seat, guestToken] of players.entries()) {
+        await four.t.mutation(api.game.submitAnswer, {
+          roomId: four.room.roomId,
+          matchId,
+          roundId: currentRoundId,
+          guestToken,
+          text: texts[seat]!,
+        });
+      }
+      await flush(four.t);
+      const after = await four.t.query(api.game.view, {
+        roomId: four.room.roomId,
+        guestToken: four.hostToken,
+      });
+      if (!after.match || !("standings" in after.match))
+        throw new Error("standings missing");
+      if (index === 6) {
+        expect(
+          after.match.reveal?.groups.find((group) => group.kind === "pair"),
+        ).toMatchObject({ scored: false });
+        const saved = await four.t.run((ctx) =>
+          ctx.db
+            .query("roundResults")
+            .withIndex("by_round", (q) => q.eq("roundId", currentRoundId))
+            .unique(),
+        );
+        expect(saved?.pairs).toMatchObject([{ scored: false }]);
+      }
+      await four.t.mutation(api.game.advance, {
+        roomId: four.room.roomId,
+        matchId,
+        guestToken: four.hostToken,
+      });
+    }
+    const final = await four.t.query(api.game.view, {
+      roomId: four.room.roomId,
+      guestToken: four.hostToken,
+    });
+    if (!final.match || !("result" in final.match))
+      throw new Error("result missing");
+    expect(final.match.result).toMatchObject({
+      shared: true,
+      decidedBy: "extra",
+      total: 1,
+    });
+    expect(final.match.result?.winners).toHaveLength(2);
+    expect(
+      await four.t.run((ctx) =>
+        ctx.db.query("rounds").withIndex("by_game_index").collect(),
+      ),
+    ).toHaveLength(7);
   });
 });

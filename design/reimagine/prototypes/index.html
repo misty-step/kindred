@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kindred prototypes</title>
+<style>
+  body { margin: 0; font: 16px/1.5 "Helvetica Neue", Arial, sans-serif; color: #141414; background: #fff; }
+  main { max-width: 760px; margin: 0 auto; padding: 40px 20px 80px; }
+  h1 { font: 700 32px/1.1 Georgia, serif; margin: 0 0 8px; }
+  h2 { font: 700 22px/1.2 Georgia, serif; margin: 40px 0 4px; }
+  p { margin: 0 0 12px; color: #5f5f5a; max-width: 60ch; }
+  a { color: #141414; }
+  .play { display: inline-block; margin: 6px 0 12px; padding: 10px 18px; border-radius: 999px; background: #141414; color: #fff; text-decoration: none; font-weight: 700; }
+  ul { padding-left: 18px; margin: 0; columns: 2; column-gap: 32px; }
+  li { margin: 2px 0; break-inside: avoid; }
+  @media (max-width: 560px) { ul { columns: 1; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Kindred prototypes</h1>
+  <p>Static prototypes with a simulated room. Bots stand in for friends and an authored synonym list stands in for the judge. Rationale: <code>design/reimagine/README.md</code>. Spec for the recommended direction: <code>design/reimagine/DESIGN.md</code>.</p>
+
+  <h2>Kindred (recommended)</h2>
+  <p>One rule, one screen per moment, color only for matches. Answers flip, then matching ones gather into a colored group.</p>
+  <a class="play" href="kindred.html">Play from the start</a>
+  <ul>
+    <li><a href="kindred.html?state=home">Home</a></li>
+    <li><a href="kindred.html?state=name">Name</a></li>
+    <li><a href="kindred.html?state=join">Join</a></li>
+    <li><a href="kindred.html?state=lobby&amp;arrived=1&amp;static=1">Lobby, alone</a></li>
+    <li><a href="kindred.html?state=lobby&amp;static=1">Lobby, full</a></li>
+    <li><a href="kindred.html?state=lobby&amp;static=1&amp;host=0">Lobby, guest</a></li>
+    <li><a href="kindred.html?state=question&amp;q=0&amp;answered=2">Question</a></li>
+    <li><a href="kindred.html?state=waiting&amp;q=0">Waiting</a></li>
+    <li><a href="kindred.html?state=checking&amp;q=0">Everyone's in</a></li>
+    <li><a href="kindred.html?state=slow&amp;q=0">Slow judge</a></li>
+    <li><a href="kindred.html?state=reveal&amp;q=0&amp;anim=1">Reveal, animated</a></li>
+    <li><a href="kindred.html?state=reveal&amp;q=0">Reveal, you matched</a></li>
+    <li><a href="kindred.html?state=reveal&amp;q=1">Reveal, you alone</a></li>
+    <li><a href="kindred.html?state=reveal&amp;q=4">Reveal, nobody matched</a></li>
+    <li><a href="kindred.html?state=reveal&amp;q=5">Reveal, two groups</a></li>
+    <li><a href="kindred.html?state=reveal&amp;q=0&amp;players=2">Reveal, two players</a></li>
+    <li><a href="kindred.html?state=reveal&amp;q=3&amp;host=0">Reveal, guest</a></li>
+    <li><a href="kindred.html?state=pick&amp;q=1">We meant the same thing</a></li>
+    <li><a href="kindred.html?state=override&amp;q=1&amp;with=Theo">Waiting for agreement</a></li>
+    <li><a href="kindred.html?state=agreed&amp;q=1&amp;with=Theo">Agreed</a></li>
+    <li><a href="kindred.html?state=room&amp;q=2">Room sheet</a></li>
+    <li><a href="kindred.html?state=question&amp;q=2&amp;offline=1&amp;answered=0">Reconnecting</a></li>
+    <li><a href="kindred.html?state=end">End</a></li>
+    <li><a href="kindred.html?state=end&amp;players=2">End, two players</a></li>
+  </ul>
+
+  <h2>Pairs (round 5, current direction)</h2>
+  <p>When exactly two of you say the same thing, you both score. Three or more, nobody does. The pair with the most points wins. Nothing is seeded. See <code>MECHANICS.md</code>, round 5.</p>
+  <a class="play" href="compete.html">Play from the start</a>
+  <ul>
+    <li><a href="compete.html?state=lobby&amp;static=1">Lobby and rules</a></li>
+    <li><a href="compete.html?state=question&amp;q=0">Question</a></li>
+    <li><a href="compete.html?state=waiting&amp;q=0">Waiting</a></li>
+    <li><a href="compete.html?state=reveal&amp;q=0">Reveal, you paired</a></li>
+    <li><a href="compete.html?state=reveal&amp;q=5">Reveal, too many</a></li>
+    <li><a href="compete.html?state=reveal&amp;q=3">Reveal, just you</a></li>
+    <li><a href="compete.html?state=reveal&amp;q=5&amp;tie=1">Reveal, tied pairs</a></li>
+    <li><a href="compete.html?state=tiebreak&amp;tie=1">One more question</a></li>
+    <li><a href="compete.html?state=tiebreak-reveal&amp;tie=1">One more question, reveal</a></li>
+    <li><a href="compete.html?state=end">End, clean win</a></li>
+    <li><a href="compete.html?state=end&amp;tie=1">End, won on the extra question</a></li>
+    <li><a href="compete.html?state=reveal&amp;q=0&amp;players=2">Two players, reveal</a></li>
+    <li><a href="compete.html?state=end&amp;players=2">Two players, end</a></li>
+  </ul>
+
+  <h2>Constellation (alternate)</h2>
+  <p>Same rules, organized by relationship: every shared answer draws a line between two people, and the lines accumulate into a picture of the group.</p>
+  <a class="play" href="constellation.html">Play from the start</a>
+  <ul>
+    <li><a href="constellation.html?state=lobby">Lobby</a></li>
+    <li><a href="constellation.html?state=question&amp;q=0">Question</a></li>
+    <li><a href="constellation.html?state=waiting&amp;q=0">Waiting</a></li>
+    <li><a href="constellation.html?state=reveal&amp;q=2">Reveal with history</a></li>
+    <li><a href="constellation.html?state=reveal&amp;q=4">Reveal, nobody matched</a></li>
+    <li><a href="constellation.html?state=override&amp;q=4">Waiting for agreement</a></li>
+    <li><a href="constellation.html?state=end">End</a></li>
+    <li><a href="constellation.html?state=reveal&amp;q=2&amp;players=2">Reveal, two players</a></li>
+    <li><a href="constellation.html?state=reveal&amp;q=4&amp;players=2">Reveal, two players, no match</a></li>
+    <li><a href="constellation.html?state=end&amp;players=2">End, two players</a></li>
+  </ul>
+
+  <h2>Meld (alternate, two players)</h2>
+  <p>If you miss, both answers become the next clue, and you try to meet in the middle. Fewer tries is better.</p>
+  <a class="play" href="meld.html">Play from the start</a>
+  <ul>
+    <li><a href="meld.html?state=start">Start</a></li>
+    <li><a href="meld.html?state=lobby">Lobby</a></li>
+    <li><a href="meld.html?state=question&amp;q=0">Question</a></li>
+    <li><a href="meld.html?state=waiting&amp;q=0">Waiting</a></li>
+    <li><a href="meld.html?state=miss&amp;q=0&amp;try=2">Missed, try 2</a></li>
+    <li><a href="meld.html?state=ladder&amp;q=1&amp;try=4">Long ladder</a></li>
+    <li><a href="meld.html?state=meld&amp;q=0&amp;try=3">Melded</a></li>
+    <li><a href="meld.html?state=nomeld&amp;q=2">Six misses</a></li>
+    <li><a href="meld.html?state=override&amp;q=0&amp;try=2">Waiting for agreement</a></li>
+    <li><a href="meld.html?state=end">End</a></li>
+  </ul>
+</main>
+</body>
+</html>

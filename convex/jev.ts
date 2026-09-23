@@ -10,9 +10,8 @@ import { promptById } from "./prompts";
 import {
   EQUIVALENCE_RUBRIC_VERSION,
   clusterAnswers,
-  hiveMindRoundScores,
+  exactPairs,
   pairKey,
-  soulmateRoundScores,
   type ClusteredAnswer,
   type OracleOutcome,
 } from "./rules";
@@ -126,15 +125,11 @@ export const loadRoundState = internalQuery({
       .query("adjudications")
       .withIndex("by_prompt_pair", (q) => q.eq("promptId", round.promptId))
       .collect();
-    const participants = await ctx.db
-      .query("matchParticipants")
-      .withIndex("by_match", (q) => q.eq("matchId", round.matchId))
-      .collect();
     return {
       promptId: round.promptId,
       promptText: prompt.text,
-      mode: game.mode,
-      pairs: game.pairs ?? null,
+      tiebreak: round.tiebreak,
+      tiedPairs: game.tiedPairs ?? [],
       answers: answers.map((answer) => ({
         playerId: answer.playerId,
         text: answer.text,
@@ -144,7 +139,6 @@ export const loadRoundState = internalQuery({
         pairKey: row.pairKey,
         verdict: row.verdict,
       })),
-      participantIds: participants.map((participant) => participant.playerId),
     };
   },
 });
@@ -207,8 +201,12 @@ export const saveRoundResult = internalMutation({
         ),
       }),
     ),
-    scores: v.array(
-      v.object({ playerId: v.id("players"), points: v.number() }),
+    pairs: v.array(
+      v.object({
+        a: v.id("players"),
+        b: v.id("players"),
+        scored: v.boolean(),
+      }),
     ),
     rubricVersion: v.number(),
     model: v.string(),
@@ -225,9 +223,7 @@ export const saveRoundResult = internalMutation({
       await ctx.db.insert("roundResults", {
         roundId: args.roundId,
         clusters: args.clusters,
-        scores: args.scores,
-        overrides: [],
-        pendingPairs: 0,
+        pairs: args.pairs,
         rubricVersion: args.rubricVersion,
         model: args.model,
       });
@@ -240,7 +236,7 @@ export const saveRoundResult = internalMutation({
       const matched = args.clusters.some(
         (cluster) => cluster.answers.length > 1,
       );
-      const score = args.scores.reduce((sum, row) => sum + row.points, 0);
+      const score = args.pairs.filter((pair) => pair.scored).length;
       await Promise.all([
         ctx.scheduler.runAfter(0, internal.productEvents.emit, {
           eventId: `${args.roundId}:adjudicated`,
@@ -374,13 +370,14 @@ export const adjudicateRound = internalAction({
       retained[pairKey(a, b)] ?? "distinct";
     const result = await clusterAnswers(clustered, oracle, retained);
 
-    const scoreMap =
-      state.mode === "soulmate" && state.pairs
-        ? soulmateRoundScores(
-            result.clusters,
-            state.pairs.map((pair) => [pair.a, pair.b] as const),
-          )
-        : hiveMindRoundScores(result.clusters, state.participantIds);
+    const tied = new Set(
+      state.tiedPairs.map((pair) => `${pair.a}\u0000${pair.b}`),
+    );
+    const pairs = exactPairs(result.clusters).map(({ a, b }) => ({
+      a: a as Id<"players">,
+      b: b as Id<"players">,
+      scored: !state.tiebreak || tied.has(`${a}\u0000${b}`),
+    }));
 
     await ctx.runMutation(internal.jev.saveRoundResult, {
       roundId: args.roundId,
@@ -392,10 +389,7 @@ export const adjudicateRound = internalAction({
           normalized: answer.normalized,
         })),
       })),
-      scores: [...scoreMap].map(([playerId, points]) => ({
-        playerId: playerId as Id<"players">,
-        points,
-      })),
+      pairs,
       rubricVersion: EQUIVALENCE_RUBRIC_VERSION,
       model: process.env["JEV_MODEL"] ?? "unknown",
       revealedAt: Date.now(),

@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meld | Kindred</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --ground:#f8fafb; --paper:#fff; --ink:#1b303c; --muted:#52616a; --line:#aab8c0; --you:#165f81; --sam:#7e4173; --meld:#584e85; --focus:#584e85; font-family:"Public Sans",system-ui,sans-serif; color:var(--ink); background:var(--ground); }
+    * { box-sizing:border-box; }
+    body { margin:0; min-width:320px; }
+    button,input { font:inherit; }
+    button { cursor:pointer; }
+    :focus-visible { outline:3px solid var(--focus); outline-offset:3px; }
+    .shell { min-height:100svh; display:flex; flex-direction:column; }
+    header { height:76px; padding:0 clamp(20px,4vw,64px); display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #dbe2e6; background:var(--ground); }
+    .wordmark { font-family:Archivo,sans-serif; font-size:22px; font-weight:800; letter-spacing:-.055em; }
+    .room-button,.text-button { min-height:44px; border:0; color:var(--ink); background:transparent; font-weight:700; text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:5px; padding:10px 4px; }
+    main { width:min(100%,920px); margin:0 auto; padding:clamp(28px,5vw,66px) clamp(18px,4vw,40px) 64px; flex:1; }
+    h1,h2,h3,p { margin-top:0; }
+    h1 { font-family:Archivo,sans-serif; font-size:clamp(42px,7vw,76px); font-weight:800; line-height:1.04; letter-spacing:-.04em; margin-bottom:24px; }
+    h2 { font-family:Archivo,sans-serif; font-size:clamp(29px,4vw,43px); font-weight:800; line-height:1.12; letter-spacing:-.045em; margin-bottom:18px; }
+    .intro { max-width:650px; padding-top:clamp(28px,9vh,110px); }
+    .intro p { max-width:560px; font-size:clamp(18px,2vw,21px); line-height:1.5; margin-bottom:35px; }
+    .duo-mark { display:flex; align-items:center; height:112px; margin-bottom:35px; }
+    .duo-mark span { display:block; width:110px; height:102px; background:var(--you); border-radius:14px 4px 4px 14px; }
+    .duo-mark span+span { background:var(--sam); margin-left:-24px; mix-blend-mode:multiply; border-radius:4px 14px 14px 4px; }
+    .primary { display:inline-flex; align-items:center; justify-content:center; min-height:52px; padding:13px 24px; border:2px solid var(--ink); border-radius:6px; background:var(--ink); color:white; font-weight:700; font-size:17px; text-align:center; }
+    .primary:hover { background:#345368; }
+    .secondary { min-height:48px; padding:10px 18px; background:transparent; border:2px solid var(--ink); border-radius:6px; color:var(--ink); font-weight:700; }
+    .lobby { text-align:center; max-width:570px; margin:0 auto; padding-top:clamp(10px,6vh,70px); }
+    .lobby h1 { font-size:clamp(38px,6vw,62px); }
+    .room-code { font-family:Archivo,sans-serif; font-size:clamp(74px,15vw,142px); font-weight:900; line-height:1; letter-spacing:.01em; color:var(--you); margin:35px 0 12px; }
+    .lobby .hint { color:var(--muted); margin-bottom:38px; font-size:17px; line-height:1.5; }
+    .people { display:flex; justify-content:center; gap:22px; margin:0 0 42px; }
+    .person { display:flex; flex-direction:column; align-items:center; gap:10px; font-weight:700; }
+    .avatar { width:62px; height:62px; border-radius:50%; color:#fff; display:grid; place-items:center; font-family:Archivo,sans-serif; font-size:25px; font-weight:800; }
+    .person:first-child .avatar { background:var(--you); }
+    .person:last-child .avatar { background:var(--sam); }
+    .game-head { max-width:700px; margin:0 auto 40px; }
+    .progress { margin:0 0 14px; color:var(--muted); font-size:15px; font-weight:600; }
+    .game-head h1 { font-size:clamp(36px,5vw,58px); margin:0; }
+    .game-head .result-heading { font-size:clamp(29px,4.2vw,48px); }
+    .game-head .status { font-size:17px; color:var(--muted); margin-top:16px; margin-bottom:0; line-height:1.5; }
+    .ladder { max-width:700px; margin:0 auto; position:relative; }
+    .ladder::before { content:""; position:absolute; top:30px; bottom:10px; left:50%; width:1px; background:#bdc9cf; z-index:0; }
+    .column-head { display:grid; grid-template-columns:1fr 1fr; gap:clamp(14px,4vw,48px); margin-bottom:14px; font-weight:700; font-size:16px; }
+    .column-head span:last-child { text-align:right; }
+    .column-head span:first-child { color:var(--you); }
+    .column-head span:last-child { color:var(--sam); }
+    .attempt { position:relative; margin:0 0 28px; }
+    .clue { position:relative; z-index:1; width:fit-content; max-width:100%; margin:0 auto 13px; padding:4px 12px; background:var(--ground); text-align:center; font-size:15px; color:var(--muted); line-height:1.45; overflow-wrap:anywhere; }
+    .pair { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:clamp(14px,4vw,48px); min-height:108px; align-items:stretch; }
+    .tile { min-width:0; min-height:108px; display:flex; flex-direction:column; justify-content:center; padding:18px clamp(12px,2.3vw,25px); border-radius:7px; color:#fff; overflow-wrap:anywhere; word-break:normal; font:800 clamp(19px,3vw,29px)/1.14 Archivo,sans-serif; letter-spacing:-.015em; }
+    .tile small { display:block; font:600 13px/1.3 "Public Sans",sans-serif; letter-spacing:0; margin-bottom:9px; }
+    .tile.you { background:var(--you); }
+    .tile.sam { background:var(--sam); text-align:right; }
+    .tile.blank { border:2px dashed #aab9c2; background:var(--ground); color:var(--muted); font:600 16px/1.3 "Public Sans",sans-serif; letter-spacing:0; }
+    .tile.blank.sam { color:var(--muted); }
+    .tile.waiting { border-style:solid; color:var(--sam); background:#f0eaf0; }
+    .pair.reveal .tile { animation:flip .62s ease both; }
+    @keyframes flip { 0% { transform:rotateX(90deg); opacity:0; } 100% { transform:rotateX(0); opacity:1; } }
+    .fusion { position:absolute; z-index:3; left:50%; top:calc(50% + 17px); transform:translate(-50%,-50%); min-height:108px; width:min(75%,450px); display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; border-radius:7px; padding:15px; color:white; background:var(--meld); font:800 clamp(20px,3vw,30px)/1.14 Archivo,sans-serif; letter-spacing:-.015em; overflow-wrap:anywhere; }
+    .fusion small { font:600 13px/1.4 "Public Sans",sans-serif; letter-spacing:0; margin-bottom:8px; }
+    .attempt.melded .pair .tile { visibility:hidden; }
+    .attempt.melded.animate .pair .tile { visibility:visible; animation:to-center 1.2s ease-in-out both; }
+    .attempt.melded.animate .pair .tile.sam { animation-name:from-right; }
+    @keyframes to-center { 0% { transform:rotateX(90deg); opacity:0; } 35%,48% { transform:rotateX(0); opacity:1; } 100% { transform:translateX(42%) scale(.7); opacity:0; } }
+    @keyframes from-right { 0% { transform:rotateX(90deg); opacity:0; } 35%,48% { transform:rotateX(0); opacity:1; } 100% { transform:translateX(-42%) scale(.7); opacity:0; } }
+    .attempt.melded.animate .fusion { animation:form .55s ease 1.15s both; }
+    @keyframes form { from { opacity:0; transform:translate(-50%,-50%) scale(.73); } to { opacity:1; transform:translate(-50%,-50%) scale(1); } }
+    .under-ladder { max-width:700px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; gap:15px; flex-wrap:wrap; }
+    .under-ladder p { color:var(--muted); margin:0; }
+    .composer { max-width:700px; margin:26px auto 0; padding:18px 0 0; border-top:1px solid #d0dbe0; }
+    .composer label { display:block; font-weight:700; margin-bottom:10px; }
+    .input-line { display:flex; gap:10px; }
+    .input-line input { min-width:0; flex:1; height:54px; border:2px solid #81939d; border-radius:6px; background:white; padding:0 15px; font-size:18px; color:var(--ink); }
+    .input-line .primary { flex:none; }
+    .end { max-width:700px; margin:0 auto; }
+    .end h1 { margin-bottom:14px; }
+    .end .summary { color:var(--muted); font-size:18px; line-height:1.5; margin-bottom:33px; }
+    .result-list { border-top:1px solid var(--line); margin-bottom:35px; }
+    .result-item { padding:19px 0; border-bottom:1px solid var(--line); display:grid; grid-template-columns:minmax(0,1fr) auto; gap:15px; align-items:center; }
+    .result-item strong { display:block; font:700 20px/1.3 Archivo,sans-serif; }
+    .result-item span { display:block; color:var(--muted); margin-top:5px; font-size:15px; }
+    .squares { color:var(--meld); font-size:18px; font-weight:700; letter-spacing:2px; white-space:nowrap; }
+    .share { padding:22px 24px; background:#eaf0f3; border-left:4px solid var(--meld); margin-bottom:23px; white-space:pre-line; font-weight:700; line-height:1.8; }
+    .end-actions { display:flex; gap:12px; flex-wrap:wrap; }
+    dialog { width:min(420px,calc(100% - 32px)); border:1px solid var(--line); border-radius:12px; padding:25px; background:var(--paper); color:var(--ink); box-shadow:0 18px 70px #142b3540; }
+    dialog::backdrop { background:#122b3c99; }
+    dialog h2 { font-size:28px; }
+    dialog .room-code { font-size:58px; margin:18px 0; }
+    dialog .people { justify-content:flex-start; margin:20px 0; }
+    dialog .avatar { width:48px; height:48px; font-size:19px; }
+    .dialog-actions { display:flex; flex-direction:column; align-items:stretch; gap:4px; border-top:1px solid #d3dde2; padding-top:15px; }
+    .dialog-actions button,.dialog-actions a { min-height:44px; display:flex; align-items:center; border:0; background:none; padding:9px 0; color:var(--ink); text-decoration:underline; text-underline-offset:4px; font-weight:600; }
+    .dialog-close { float:right; min-width:44px; min-height:44px; border:0; background:none; color:var(--ink); font-size:24px; }
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    @media (max-width:600px) {
+      header { height:62px; }
+      main { padding-top:28px; }
+      .game-head { margin-bottom:28px; }
+      .game-head h1 { font-size:38px; }
+      .tile { min-height:92px; padding:12px; font-size:clamp(17px,5vw,24px); }
+      .pair { min-height:92px; }
+      .fusion { min-height:92px; width:84%; }
+      .attempt { margin-bottom:22px; }
+      .clue { font-size:14px; }
+      .shell:has(.composer) main { padding-bottom:128px; }
+      .composer { position:fixed; z-index:10; left:0; right:0; bottom:0; max-width:none; margin:0; padding:12px 18px max(14px,env(safe-area-inset-bottom)); background:var(--ground); box-shadow:0 -5px 20px #1b303c14; }
+      .composer label { font-size:14px; margin-bottom:7px; }
+      .input-line input { height:50px; font-size:16px; }
+      .input-line .primary { min-height:50px; padding:9px 15px; font-size:16px; }
+      .result-item { grid-template-columns:1fr; gap:5px; }
+      .squares { font-size:17px; }
+    }
+    @media (prefers-reduced-motion:reduce) {
+      *,*::before,*::after { scroll-behavior:auto!important; }
+      .pair.reveal .tile { animation:appear .15s ease both; }
+      .attempt.melded.animate .pair .tile { visibility:hidden; animation:none; }
+      .attempt.melded.animate .fusion { animation:appear .15s ease both; }
+      @keyframes appear { from { opacity:0; } to { opacity:1; } }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header><div class="wordmark">Kindred</div><button class="room-button" type="button" id="roomButton">Room</button></header>
+    <main id="app"></main>
+  </div>
+  <dialog id="roomDialog" aria-labelledby="roomTitle">
+    <button type="button" class="dialog-close" id="closeRoom" aria-label="Close room">×</button>
+    <h2 id="roomTitle">Room</h2>
+    <p>Share this code with Sam.</p>
+    <div class="room-code">KDRD</div>
+    <div class="people"><div class="person"><div class="avatar">Y</div>You</div><div class="person"><div class="avatar">S</div>Sam</div></div>
+    <div class="dialog-actions"><button type="button" id="copyInvite">Copy invite link</button><a href="index.html">All prototypes</a><button type="button" id="leaveRoom">Leave room</button></div>
+  </dialog>
+  <div class="sr-only" role="status" aria-live="polite" id="announcement"></div>
+  <script>
+    const QUESTIONS = [
+      { prompt:"A famous duo", sam:[
+        {answer:"Batman and Robin", synonyms:["batman and robin","batman robin"]},
+        {answer:"Superheroes", synonyms:["superheroes","superhero","comic superheroes"]},
+        {answer:"Comic book heroes", synonyms:["comic book heroes","comic book hero","comic heroes","comic hero"]},
+        {answer:"Heroes", synonyms:["hero","heroes"]},
+        {answer:"Comic books", synonyms:["comic books","comic book","comics"]},
+        {answer:"Friendship", synonyms:["friendship","friends","being friends"]}
+      ]},
+      { prompt:"The best pizza topping", sam:[
+        {answer:"Pepperoni", synonyms:["pepperoni","roni"]},
+        {answer:"Pizza", synonyms:["pizza","pizza slice","slice of pizza"]},
+        {answer:"Italian food", synonyms:["italian food","italian cuisine","italian dish"]},
+        {answer:"Dinner", synonyms:["dinner","supper","evening meal"]},
+        {answer:"Food", synonyms:["food","something to eat"]},
+        {answer:"A meal", synonyms:["meal","a meal","dinner","supper"]}
+      ]},
+      { prompt:"Something that's always sticky", sam:[
+        {answer:"Honey", synonyms:["honey"]},
+        {answer:"Syrup", synonyms:["syrup","maple syrup"]},
+        {answer:"Sugar", synonyms:["sugar","granulated sugar"]},
+        {answer:"Candy", synonyms:["candy","sweets"]},
+        {answer:"Jam", synonyms:["jam","fruit jam","jelly"]},
+        {answer:"Caramel", synonyms:["caramel","caramel sauce"]}
+      ]}
+    ];
+    const app = document.getElementById("app");
+    const announce = document.getElementById("announcement");
+    const room = document.getElementById("roomDialog");
+    const sampleRows = [
+      [{you:"Tom and Jerry",sam:"Batman and Robin"},{you:"Cartoons",sam:"Superheroes"},{you:"Comic book hero",sam:"Comic book heroes",meld:true}],
+      [{you:"Mushrooms",sam:"Pepperoni"},{you:"Vegetables",sam:"Pizza"},{you:"Dinner",sam:"Italian food"}],
+      [{you:"Glue",sam:"Honey"},{you:"Tape",sam:"Syrup"},{you:"Paper",sam:"Sugar"},{you:"Envelope",sam:"Candy"},{you:"Rubber",sam:"Jam"},{you:"Soap",sam:"Caramel"}]
+    ];
+    let game = { state:"start", q:0, rows:[], results:[], currentTry:1, pending:"", animate:false, fromLink:false };
+    let timer;
+    function esc(value) { return String(value).replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[char]); }
+    function normalize(value) { return String(value).toLowerCase().replace(/&/g," and ").replace(/[^a-z0-9]+/g," ").trim().replace(/^(?:(?:a|an|the|my)\s+)+/,"").replace(/\s+/g," "); }
+    function matches(q, index, text) { const answer=normalize(text); return QUESTIONS[q].sam[index].synonyms.some(syn => { const phrase=normalize(syn); return answer===phrase || (` ${answer} `).includes(` ${phrase} `); }); }
+    function plural(n) { return n===1 ? "try" : "tries"; }
+    function setState(state) { game.state=state; render(); }
+    function clueFor(index) { if(index===0) return QUESTIONS[game.q].prompt; const row=game.rows[index-1]; return `Somewhere between ${row.you} and ${row.sam}`; }
+    function tile(kind,text,extra="") { return `<div class="tile ${kind} ${extra}"><small>${kind==="you"?"You":"Sam"}</small>${esc(text)}</div>`; }
+    function rowMarkup(row,index,active) {
+      const clue=esc(clueFor(index));
+      const fused=row?.meld;
+      const pair=row ? `<div class="pair ${game.animate && index===game.rows.length-1?"reveal":""}">${tile("you",row.you)}${tile("sam",row.sam)}</div>` : `<div class="pair">${game.state==="waiting" && index===game.rows.length ? tile("you",game.pending) : tile("you","Your answer","blank")}${tile("sam",game.state==="waiting"?"Sam is thinking…":"Sam's answer","blank"+(game.state==="waiting"?" waiting":""))}</div>`;
+      return `<section class="attempt ${fused?"melded":""} ${fused && game.animate?"animate":""}" aria-label="Try ${index+1}"><p class="clue">${index===0?clue:`Try ${index+1}: ${clue}`}</p>${pair}${fused?`<div class="fusion"><small>You and Sam</small>${esc(row.override?`${row.you} and ${row.sam}`:row.sam)}</div>`:""}</section>`;
+    }
+    function gameMarkup() {
+      const finished=["meld","nomeld"].includes(game.state);
+      const waiting=game.state==="waiting";
+      const override=game.state==="override";
+      const last=game.rows.at(-1);
+      const active=!finished && !override;
+      const count=game.rows.length+(active?1:0);
+      const heading=game.state==="meld" ? last.override ? `Sam agreed you meant the same thing. Melded on try ${game.rows.length}.` : `You both said ${last.sam}. Melded on try ${game.rows.length}.` : game.state==="nomeld" ? "You didn't meet this time." : QUESTIONS[game.q].prompt;
+      const status=waiting ? "Your answer is in. Sam is thinking." : override ? "Waiting for Sam to agree." : game.state==="miss" || game.state==="ladder" ? "Different answers. Try again from where you both landed." : game.state==="nomeld" ? "Six tries. You can try the next question." : "";
+      return `<div class="game-head"><p class="progress">Question ${game.q+1} of 3${!finished ? `, try ${game.rows.length+(override?0:1)} of 6`:""}</p><h1 class="${finished?"result-heading":""}">${esc(heading)}</h1>${status?`<p class="status">${esc(status)}</p>`:""}</div><div class="ladder"><div class="column-head"><span>You</span><span>Sam</span></div>${Array.from({length:count},(_,i)=>rowMarkup(game.rows[i],i,active)).join("")}</div>${finished ? `<div class="under-ladder"><p>${game.state==="meld"?`${game.rows.length} ${plural(game.rows.length)} for this question.`:"No meld in 6 tries."}</p>${game.state==="nomeld"?`<button type="button" class="text-button" data-action="override">We meant the same thing</button>`:""}<button type="button" class="primary" data-action="next">${game.q===2?"See results":"Next question"}</button></div>` : override ? `<div class="under-ladder"><p>Sam is checking your last answers.</p></div>` : waiting ? "" : `<div class="under-ladder">${game.rows.length ? `<button type="button" class="text-button" data-action="override">We meant the same thing</button>`:""}</div><form class="composer" id="answerForm"><label for="answer">Your answer</label><div class="input-line"><input id="answer" name="answer" maxlength="80" required autocomplete="off" placeholder="Type your answer"><button type="submit" class="primary">Send answer</button></div></form>`}`;
+    }
+    function shareText() { return `Kindred Meld\n${game.results.map((r,i)=>`${i+1} ${"■".repeat(r.tries)}${"□".repeat(6-r.tries)}${r.meld?"":" ×"}`).join("\n")}`; }
+    function endMarkup() { return `<div class="end"><h1>Your three questions</h1><p class="summary">Fewer tries means you and Sam found the same thing sooner.</p><div class="result-list">${game.results.map((r,i)=>`<div class="result-item"><div><strong>${esc(QUESTIONS[i].prompt)}</strong><span>${r.meld?`Melded in ${r.tries} ${plural(r.tries)}`:"No meld in 6 tries"}</span></div><div class="squares" aria-label="${r.tries} ${plural(r.tries)}${r.meld?"":" without a meld"}">${"■".repeat(r.tries)}${"□".repeat(6-r.tries)}${r.meld?"":" ×"}</div></div>`).join("")}</div><div class="share" aria-label="Share text">${esc(shareText())}</div><div class="end-actions"><button type="button" class="primary" data-action="copy">Copy results</button><button type="button" class="secondary" data-action="again">Play again</button></div></div>`; }
+    function render() {
+      app.innerHTML=game.state==="start" ? `<div class="intro"><div class="duo-mark" aria-hidden="true"><span></span><span></span></div><h1>Can you meet in the middle?</h1><p>Say the same thing as Sam. If you miss, meet somewhere between your two answers.</p><button class="primary" type="button" data-action="lobby">Start a game</button></div>` : game.state==="lobby" ? `<div class="lobby"><h1>Play with Sam</h1><div class="room-code" aria-label="Room code K D R D">KDRD</div><p class="hint">Sam is here. Three questions, with up to six tries to meet on each one.</p><div class="people"><div class="person"><div class="avatar">Y</div>You</div><div class="person"><div class="avatar">S</div>Sam</div></div><button class="primary" type="button" data-action="begin">Start game</button></div>` : game.state==="end" ? endMarkup() : gameMarkup();
+      if(game.animate) { setTimeout(()=>{ game.animate=false; },1600); }
+    }
+    function beginQuestion(q) { game.q=q; game.rows=[]; game.pending=""; game.animate=false; setState("question"); }
+    function resolve() {
+      const index=game.rows.length;
+      const sam=QUESTIONS[game.q].sam[index].answer;
+      const meld=matches(game.q,index,game.pending);
+      game.rows.push({you:game.pending,sam,meld});
+      game.pending="";
+      game.animate=true;
+      setState(meld?"meld":game.rows.length===6?"nomeld":"miss");
+      announce.textContent=meld?`You both said ${sam}. Melded on try ${game.rows.length}.`:`You said ${game.rows.at(-1).you}. Sam said ${sam}. ${game.rows.length===6?"You didn't meet this time.":"Try again."}`;
+      if(!meld && game.rows.length<6) requestAnimationFrame(()=>document.getElementById("answer")?.focus({preventScroll:true}));
+    }
+    function loadDeepLink() {
+      const params=new URLSearchParams(location.search);
+      const state=params.get("state");
+      const valid=["start","lobby","question","waiting","miss","ladder","meld","nomeld","override","end"];
+      if(!valid.includes(state)) return;
+      const q=Math.max(0,Math.min(2,Number(params.get("q"))||0));
+      const attempt=Math.max(1,Math.min(6,Number(params.get("try"))||1));
+      game={state,q,rows:[],results:[],currentTry:attempt,pending:"",animate:false,fromLink:true};
+      if(state==="end") game.results=[{tries:3,meld:true},{tries:6,meld:false},{tries:2,meld:true}];
+      if(["question","waiting"].includes(state)) game.pending=state==="waiting"?"Tom and Jerry":"";
+      if(["miss","ladder"].includes(state)) game.rows=sampleRows[q].slice(0,Math.max(1,attempt-1));
+      if(state==="meld") {
+        game.rows=sampleRows[q].slice(0,Math.max(0,attempt-1));
+        const demo=sampleRows[q][attempt-1];
+        game.rows.push(demo?.meld?{...demo}:{you:QUESTIONS[q].sam[attempt-1].answer,sam:QUESTIONS[q].sam[attempt-1].answer,meld:true});
+      }
+      if(state==="nomeld") game.rows=sampleRows[q].slice(0,6).map((row,i)=>({you:row.you,sam:QUESTIONS[q].sam[i].answer,meld:false}));
+      if(state==="override") game.rows=sampleRows[q].slice(0,attempt);
+    }
+    document.getElementById("roomButton").addEventListener("click",()=>room.showModal());
+    document.getElementById("closeRoom").addEventListener("click",()=>room.close());
+    document.getElementById("copyInvite").addEventListener("click",async()=>{ try { await navigator.clipboard.writeText(new URL("?state=lobby",location.href).href); announce.textContent="Invite link copied."; } catch { announce.textContent="Couldn't copy the invite link."; } });
+    document.getElementById("leaveRoom").addEventListener("click",()=>{ clearTimeout(timer); room.close(); game={state:"start",q:0,rows:[],results:[],currentTry:1,pending:"",animate:false,fromLink:false}; render(); });
+    app.addEventListener("submit",event=>{
+      if(event.target.id!=="answerForm") return;
+      event.preventDefault();
+      const value=event.target.elements.answer.value.trim();
+      if(!value) return;
+      game.pending=value; game.animate=false; setState("waiting");
+      announce.textContent="Your answer is in. Sam is thinking.";
+      timer=setTimeout(resolve,800+Math.random()*1700);
+    });
+    app.addEventListener("click",async event=>{
+      const action=event.target.closest("[data-action]")?.dataset.action;
+      if(!action) return;
+      if(action==="lobby") setState("lobby");
+      if(action==="begin") { game.results=[]; beginQuestion(0); }
+      if(action==="override") { clearTimeout(timer); setState("override"); announce.textContent="Waiting for Sam to agree."; timer=setTimeout(()=>{ const last=game.rows.at(-1); last.meld=true; last.override=true; game.animate=true; setState("meld"); announce.textContent=`Sam agreed. You melded on try ${game.rows.length}.`; },1200); }
+      if(action==="next") { game.results[game.q]={tries:game.rows.length,meld:game.state==="meld"}; if(game.q===2) setState("end"); else beginQuestion(game.q+1); }
+      if(action==="again") { game.results=[]; beginQuestion(0); }
+      if(action==="copy") { try { await navigator.clipboard.writeText(shareText()); announce.textContent="Results copied."; } catch { announce.textContent="Couldn't copy results."; } }
+    });
+    loadDeepLink(); render();
+  </script>
+</body>
+</html>

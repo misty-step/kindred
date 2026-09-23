@@ -17,24 +17,18 @@ export default defineSchema({
   ...parlorTables,
   games: defineTable({
     matchId: v.id("matches"),
-    mode: v.union(v.literal("hive-mind"), v.literal("soulmate")),
-    /** Ordered prompt ids for this match's rounds. */
+    /** Six main prompts and one reserved extra prompt. */
     promptIds: v.array(v.string()),
-    /** Soulmate frozen pairings by player id, sorted by seat. */
-    pairs: v.optional(
+    tiedPairs: v.optional(
       v.array(v.object({ a: v.id("players"), b: v.id("players") })),
     ),
-    /** Final two-player Hive Mind session record. */
-    sessionRecord: v.optional(
+    result: v.optional(
       v.object({
-        roundsPlayed: v.number(),
-        sharedThoughts: v.number(),
-        record: v.string(),
+        winners: v.array(v.object({ a: v.id("players"), b: v.id("players") })),
+        shared: v.boolean(),
+        decidedBy: v.union(v.literal("questions"), v.literal("extra")),
+        total: v.number(),
       }),
-    ),
-    /** Final per-player totals for scored modes. */
-    totals: v.optional(
-      v.array(v.object({ playerId: v.id("players"), points: v.number() })),
     ),
   }).index("by_match", ["matchId"]),
   rounds: defineTable({
@@ -46,8 +40,8 @@ export default defineSchema({
       v.literal("answering"),
       v.literal("adjudicating"),
       v.literal("revealed"),
-      v.literal("names"),
     ),
+    tiebreak: v.boolean(),
     /** Adjudication attempts used; bounded with fair retry. */
     attempts: v.number(),
     /** Set only by the adjudication action; mutations stay deterministic. */
@@ -92,25 +86,16 @@ export default defineSchema({
         ),
       }),
     ),
-    scores: v.array(
-      v.object({ playerId: v.id("players"), points: v.number() }),
+    pairs: v.array(
+      v.object({
+        a: v.id("players"),
+        b: v.id("players"),
+        scored: v.boolean(),
+      }),
     ),
-    overrides: v.array(
-      v.object({ playerA: v.id("players"), playerB: v.id("players") }),
-    ),
-    pendingPairs: v.number(),
     rubricVersion: v.number(),
     model: v.string(),
   }).index("by_round", ["roundId"]),
-  /** Mutual shared-memory override consents; applied when both players agree. */
-  overrideConsents: defineTable({
-    roundId: v.id("rounds"),
-    /** Sorted player-id pair, order-independent. */
-    pairKey: v.string(),
-    playerId: v.id("players"),
-  })
-    .index("by_round_pair", ["roundId", "pairKey"])
-    .index("by_round_player", ["roundId", "playerId"]),
   /** Versioned, content-free product signals. eventId makes retries idempotent. */
   productEvents: defineTable({
     eventId: v.string(),

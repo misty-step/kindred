@@ -1,29 +1,22 @@
 "use client";
 
 import { normalizeDisplayName } from "@parlor/core";
-import {
-  RoomCodeInput,
-  normalizeRoomCode,
-  useAudio,
-  useGuestCredential,
-} from "@parlor/react";
+import { normalizeRoomCode, useAudio, useGuestCredential } from "@parlor/react";
 import { useMutation } from "convex/react";
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { api } from "../convex/_generated/api";
 import type { Id } from "../convex/_generated/dataModel";
 import { errorMessage } from "./error-message";
 import { issueGuest } from "./guest-issuer";
+import { Mark } from "./mark";
 import { RoomBoundary } from "./room-boundary";
 import { RoomView } from "./room-view";
+
+type Step = "home" | "name" | "join";
 
 function subscribeToNavigation(notify: () => void) {
   window.addEventListener("popstate", notify);
   return () => window.removeEventListener("popstate", notify);
-}
-
-function subscribeToStorage(notify: () => void) {
-  window.addEventListener("storage", notify);
-  return () => window.removeEventListener("storage", notify);
 }
 
 function getInviteCode() {
@@ -32,16 +25,16 @@ function getInviteCode() {
   );
 }
 
-function getRememberedName() {
+function getServerValue() {
+  return "";
+}
+
+function rememberedName() {
   try {
     return sessionStorage.getItem("kindred:name") ?? "";
   } catch {
     return "";
   }
-}
-
-function getServerValue() {
-  return "";
 }
 
 export default function Page() {
@@ -50,70 +43,69 @@ export default function Page() {
     autoAcquire: true,
     storage: null,
   });
-  const [roomId, setRoomId] = useState<Id<"rooms"> | null>(null);
-  const rememberedName = useSyncExternalStore(
-    subscribeToStorage,
-    getRememberedName,
-    getServerValue,
-  );
   const inviteCode = useSyncExternalStore(
     subscribeToNavigation,
     getInviteCode,
     getServerValue,
   );
-  const [editedName, setDisplayName] = useState<string>();
-  const [editedCode, setCode] = useState<string>();
-  const displayName = editedName ?? rememberedName;
-  const code = editedCode ?? inviteCode;
+  const [step, setStep] = useState<Step>("home");
+  const [roomId, setRoomId] = useState<Id<"rooms"> | null>(null);
   const [joinUrl, setJoinUrl] = useState("");
-  const [busy, setBusy] = useState<"create" | "join" | null>(null);
+  const [name, setName] = useState("");
+  const [code, setCode] = useState<string>();
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const inFlight = useRef(false);
   const createRoom = useMutation(api.rooms.createRoom);
   const joinRoom = useMutation(api.rooms.joinRoom);
   const audio = useAudio();
-  const name = normalizeDisplayName(displayName);
-  const entryDisabled = !guest.credential || busy !== null || !name.ok;
+  const roomCode = normalizeRoomCode(code ?? inviteCode);
+  const displayName = normalizeDisplayName(name);
+
+  useEffect(() => {
+    setName(rememberedName());
+  }, []);
+
+  // An invite link lands on the join form with the code filled in.
+  useEffect(() => {
+    if (inviteCode.length === 4 && roomId === null) setStep("join");
+  }, [inviteCode, roomId]);
 
   async function enter(mode: "create" | "join") {
-    if (inFlight.current || !guest.credential || !name.ok) return;
+    if (inFlight.current || !guest.credential || !displayName.ok) return;
     inFlight.current = true;
-    setBusy(mode);
+    setBusy(true);
     setError("");
     try {
-      const args = { displayName: name.value, guestToken: guest.credential };
+      const args = {
+        displayName: displayName.value,
+        guestToken: guest.credential,
+      };
       const result =
         mode === "create"
           ? await createRoom(args)
-          : await joinRoom({ ...args, code });
+          : await joinRoom({ ...args, code: roomCode });
       if (!("roomId" in result)) {
-        throw new Error("code" in result ? result.code : "ROOM_UNAVAILABLE");
+        throw new Error("code" in result ? result.code : "ROOM_NOT_OPEN");
       }
-      setRoomId(result.roomId);
-      setCode(result.code);
       const url = new URL(window.location.href);
       url.search = new URLSearchParams({ room: result.code }).toString();
       url.hash = "";
       window.history.replaceState(null, "", url);
       setJoinUrl(url.toString());
+      setRoomId(result.roomId);
       try {
-        sessionStorage.setItem("kindred:name", name.value);
+        sessionStorage.setItem("kindred:name", displayName.value);
       } catch {
-        // Remembering a display name is optional; entering the room is not.
+        // Remembering a name is optional; entering the room is not.
       }
       audio.play("join");
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
       inFlight.current = false;
-      setBusy(null);
+      setBusy(false);
     }
-  }
-
-  function retryGuest() {
-    const request =
-      guest.expiresAt === null ? guest.acquire() : guest.refresh();
-    void request.catch(() => {});
   }
 
   function exit() {
@@ -121,179 +113,278 @@ export default function Page() {
     setJoinUrl("");
     setCode("");
     setError("");
+    setStep("home");
     const url = new URL(window.location.href);
     url.search = "";
     url.hash = "";
     window.history.replaceState(null, "", url);
   }
 
-  return (
-    <main className="shell">
-      <div className="ambient-light ambient-light--amber" aria-hidden="true" />
-      <div className="ambient-light ambient-light--teal" aria-hidden="true" />
-      <header className="app-header">
-        <a className="brand-lockup" href="/" aria-label="Kindred home">
-          <img src="/brand/kindred-mark.svg" width="64" height="64" alt="" />
-          <span>
-            <span className="eyebrow">A game of shared sparks</span>
-            <span className="wordmark">Kindred</span>
-          </span>
-        </a>
+  const connecting = !guest.credential;
+  const connectLine = connecting ? (
+    <p className={guest.error ? "error" : "hint"} role="status">
+      {guest.loading || !guest.error
+        ? "Connecting…"
+        : `${errorMessage(guest.error)} `}
+      {!guest.loading && guest.error ? (
         <button
+          className="link"
           type="button"
-          className="sound-toggle secondary"
-          aria-pressed={audio.enabled}
-          aria-label={audio.enabled ? "Turn sound off" : "Turn sound on"}
           onClick={() => {
-            if (audio.toggleMuted()) audio.play("ready");
+            const request =
+              guest.expiresAt === null ? guest.acquire() : guest.refresh();
+            void request.catch(() => {});
           }}
         >
-          <span aria-hidden="true">{audio.enabled ? "♪" : "♪̸"}</span>
-          <span className="sound-label">
-            {audio.enabled ? "Sound on" : "Sound off"}
-          </span>
+          Try again
         </button>
-      </header>
+      ) : null}
+    </p>
+  ) : null;
 
-      {roomId ? (
-        guest.credential ? (
-          <RoomBoundary credential={guest.credential} onExit={exit}>
-            <RoomView
-              roomId={roomId}
-              guestToken={guest.credential}
-              joinUrl={joinUrl}
-              onExit={exit}
-            />
-          </RoomBoundary>
-        ) : (
-          <section className="panel status-panel" aria-busy={guest.loading}>
-            <span className="status-orbit" aria-hidden="true" />
-            <p className="eyebrow">Hold that thought</p>
-            <h2>Your place is still here.</h2>
-            <p role="status">
-              {guest.loading
-                ? "Reconnecting you…"
-                : "Reconnect to return to the room."}
-            </p>
-            {!guest.loading && (
-              <button type="button" onClick={retryGuest}>
-                Reconnect
-              </button>
-            )}
+  if (roomId) {
+    return guest.credential ? (
+      <RoomBoundary credential={guest.credential} onExit={exit}>
+        <RoomView
+          roomId={roomId}
+          guestToken={guest.credential}
+          joinUrl={joinUrl}
+          onExit={exit}
+        />
+      </RoomBoundary>
+    ) : (
+      <>
+        <Bar />
+        <main>
+          <section className="screen" aria-busy={guest.loading}>
+            <h1 className="headline big">Reconnecting</h1>
+            <p className="sub">Your place in the room is kept.</p>
+            {connectLine}
           </section>
-        )
-      ) : (
-        <section className="panel lobby" aria-labelledby="lobby-heading">
-          <div className="lobby-intro">
-            <p className="eyebrow">Same room. Secret answers.</p>
-            <h1 id="lobby-heading">Find the same thought.</h1>
-            <p>
-              Answer in secret, then discover who lit up with the same idea.
+        </main>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Bar />
+      <main>
+        {step === "home" && (
+          <section className="screen" aria-labelledby="home-title">
+            <Mark className="hero-mark" stroke={1.4} />
+            <h1 className="wordmark" id="home-title">
+              Kindred
+            </h1>
+            <p className="tagline">
+              When exactly two of you say the same thing, you both score.
             </p>
-          </div>
-
-          {!guest.credential && (
-            <div
-              className="inline-notice"
-              role={guest.error ? "alert" : "status"}
-            >
-              <span className="status-orbit" aria-hidden="true" />
-              <div>
-                <strong>
-                  {guest.loading
-                    ? "Making space for you…"
-                    : "We lost the connection."}
-                </strong>
-                {guest.error !== null && guest.error !== undefined && (
-                  <p>{errorMessage(guest.error)}</p>
-                )}
-              </div>
-              {!guest.loading && (
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={retryGuest}
-                >
-                  Try again
-                </button>
-              )}
+            <HomeDemo />
+            <div className="actions">
+              <button
+                className="btn"
+                type="button"
+                onClick={() => setStep("name")}
+              >
+                Start a game
+              </button>
+              <button
+                className="btn secondary"
+                type="button"
+                onClick={() => setStep("join")}
+              >
+                Join a game
+              </button>
+              <p className="hint">2 to 12 players. About 5 minutes.</p>
             </div>
-          )}
+          </section>
+        )}
 
+        {step === "name" && (
           <form
+            className="screen"
+            aria-labelledby="name-title"
+            aria-busy={busy}
             onSubmit={(event) => {
               event.preventDefault();
-              if (code.length === 4) void enter("join");
+              void enter("create");
             }}
-            aria-busy={busy !== null}
           >
-            <label htmlFor="display-name">What should we call you?</label>
+            <h1 className="prompt" id="name-title">
+              What should we call you?
+            </h1>
+            <label className="sr-only" htmlFor="display-name">
+              Your name
+            </label>
             <input
+              className="input"
               id="display-name"
-              name="displayName"
               autoComplete="nickname"
-              value={displayName}
-              maxLength={48}
-              required
-              disabled={busy !== null}
-              aria-describedby="name-help"
+              maxLength={24}
               placeholder="Your name"
-              onChange={(event) => setDisplayName(event.currentTarget.value)}
+              value={name}
+              autoFocus
+              onChange={(event) => setName(event.currentTarget.value)}
             />
-            <p id="name-help" className="hint">
-              Keep it to 24 characters.
-            </p>
-            {displayName.trim() && !name.ok && (
-              <p className="field-error" role="status">
-                Use 1 to 24 characters.
+            {error && (
+              <p className="error" role="alert">
+                {error}
               </p>
             )}
-            <button
-              type="button"
-              className="primary-action"
-              disabled={entryDisabled}
-              onClick={() => {
-                void enter("create");
-              }}
-            >
-              {busy === "create" ? "Starting a room…" : "Start a room"}
-            </button>
-
-            <div className="join-divider" aria-hidden="true">
-              <span>or join your people</span>
-            </div>
-            <div className="join-form">
-              <RoomCodeInput
-                value={code}
-                onChange={setCode}
-                label="Room code"
-                description="Four characters from your host."
-                disabled={busy !== null}
-                sound={audio.enabled}
-              />
+            {connectLine}
+            <div className="actions">
               <button
+                className="btn"
                 type="submit"
-                className="secondary"
-                disabled={entryDisabled || code.length !== 4}
+                disabled={busy || connecting || !displayName.ok}
               >
-                {busy === "join" ? "Joining…" : "Join room"}
+                {busy ? "Creating room…" : "Create room"}
+              </button>
+              <button
+                className="link"
+                type="button"
+                onClick={() => {
+                  setError("");
+                  setStep("home");
+                }}
+              >
+                Back
               </button>
             </div>
           </form>
-          {error && (
-            <p className="error" role="alert">
-              {error}
-            </p>
-          )}
-        </section>
-      )}
+        )}
 
-      {!roomId && (
-        <footer className="app-footer">
-          <span className="footer-spark" aria-hidden="true" />
-          <p>Your answer stays hidden until everyone is ready.</p>
-        </footer>
-      )}
-    </main>
+        {step === "join" && (
+          <form
+            className="screen"
+            aria-labelledby="join-title"
+            aria-busy={busy}
+            onSubmit={(event) => {
+              event.preventDefault();
+              void enter("join");
+            }}
+          >
+            <h1 className="prompt" id="join-title">
+              Join a game
+            </h1>
+            <label className="field-label" htmlFor="room-code">
+              Room code
+            </label>
+            <input
+              className="input code"
+              id="room-code"
+              autoComplete="off"
+              autoCapitalize="characters"
+              spellCheck={false}
+              maxLength={4}
+              placeholder="ABCD"
+              value={roomCode}
+              autoFocus={roomCode.length !== 4}
+              onChange={(event) =>
+                setCode(normalizeRoomCode(event.currentTarget.value))
+              }
+            />
+            <label className="field-label" htmlFor="join-name">
+              Your name
+            </label>
+            <input
+              className="input"
+              id="join-name"
+              autoComplete="nickname"
+              maxLength={24}
+              placeholder="Your name"
+              value={name}
+              autoFocus={roomCode.length === 4}
+              onChange={(event) => setName(event.currentTarget.value)}
+            />
+            {error && (
+              <p className="error" role="alert">
+                {error}
+              </p>
+            )}
+            {connectLine}
+            <div className="actions">
+              <button
+                className="btn"
+                type="submit"
+                disabled={
+                  busy || connecting || !displayName.ok || roomCode.length !== 4
+                }
+              >
+                {busy ? "Joining…" : "Join"}
+              </button>
+              <button
+                className="link"
+                type="button"
+                onClick={() => {
+                  setError("");
+                  setStep("home");
+                }}
+              >
+                Back
+              </button>
+            </div>
+          </form>
+        )}
+      </main>
+    </>
+  );
+}
+
+function Bar() {
+  return (
+    <header className="bar">
+      <a className="brand" href="/" aria-label="Kindred home">
+        <Mark />
+        <span>Kindred</span>
+      </a>
+    </header>
+  );
+}
+
+/** Plays once: couch and sofa pair up, chair stays alone. Decorative. */
+function HomeDemo() {
+  const [formed, setFormed] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setFormed(true), 1300);
+    return () => clearTimeout(timer);
+  }, []);
+  return (
+    <div className="demo" aria-hidden="true">
+      <div className="reveal">
+        {formed ? (
+          <>
+            <div
+              className="group formed"
+              style={{ ["--g" as string]: "var(--g1)" }}
+            >
+              <DemoTile text="sofa" name="Jo" />
+              <DemoTile text="couch" name="Priya" />
+            </div>
+            <div className="loners">
+              <DemoTile text="chair" name="Sam" />
+            </div>
+          </>
+        ) : (
+          <div className="loners">
+            <DemoTile text="sofa" name="Jo" />
+            <DemoTile text="chair" name="Sam" />
+            <DemoTile text="couch" name="Priya" />
+          </div>
+        )}
+      </div>
+      <p className={`hint fade${formed ? " in" : ""}`}>
+        Sofa and couch count as the same answer.
+      </p>
+    </div>
+  );
+}
+
+function DemoTile({ text, name }: { text: string; name: string }) {
+  return (
+    <div className="tile">
+      <span className="t">{text}</span>
+      <span className="n">{name}</span>
+    </div>
   );
 }

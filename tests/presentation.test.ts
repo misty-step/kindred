@@ -58,6 +58,7 @@ test("player surfaces contain no browser identity or engineering explanations", 
     "app/room-boundary.tsx",
     "app/providers.tsx",
     "app/error-message.ts",
+    "app/reveal-copy.ts",
   ];
   const copy = (await Promise.all(paths.map(source))).join("\n");
   for (const leak of [
@@ -72,24 +73,4 @@ test("player surfaces contain no browser identity or engineering explanations", 
   ]) {
     assert.equal(copy.includes(leak), false, `player copy leaks: ${leak}`);
   }
-});
-
-test("Fireflies tokens and Fraunces display type are part of the real surface", async () => {
-  const css = await source("app/globals.css");
-  assert.match(css, /--night:\s*#[0-9a-f]{6}/i);
-  assert.match(css, /--amber:\s*#[0-9a-f]{6}/i);
-  assert.match(css, /--teal:\s*#[0-9a-f]{6}/i);
-  assert.match(css, /Fraunces/);
-  assert.match(css, /prefers-reduced-motion/);
-});
-
-test("mobile ambience cannot widen the viewport and disabled actions read as unavailable", async () => {
-  const css = await source("app/globals.css");
-  assert.match(css, /\.ambient-light--teal\s*\{[^}]*right:\s*0;/s);
-  assert.doesNotMatch(css, /\.shell\s*\{[^}]*overflow-x:/s);
-  assert.match(css, /\.panel\s*\{[^}]*overflow:\s*clip;/s);
-  assert.match(
-    css,
-    /button:disabled\s*\{[^}]*background:\s*var\(--night-raised\)/s,
-  );
 });
