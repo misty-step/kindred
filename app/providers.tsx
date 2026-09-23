@@ -3,6 +3,7 @@
 import { AudioProvider } from "@parlor/react";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { useState, type ReactNode } from "react";
+import { Mark } from "./mark";
 
 export function Providers({ children }: { children: ReactNode }) {
   const [client] = useState(() => {
@@ -11,18 +12,14 @@ export function Providers({ children }: { children: ReactNode }) {
   });
   if (!client) {
     return (
-      <main className="shell">
-        <header className="app-header">
-          <a className="brand-lockup" href="/" aria-label="Kindred home">
-            <img src="/brand/kindred-mark.svg" width="64" height="64" alt="" />
-            <span className="wordmark">Kindred</span>
-          </a>
-        </header>
-        <section className="panel status-panel" role="alert">
-          <p className="eyebrow">A quiet moment</p>
-          <h1>Kindred is resting.</h1>
-          <p>
-            The rooms are unavailable right now. Try again in a little while.
+      <main>
+        <section className="screen" role="alert" aria-labelledby="resting">
+          <Mark className="hero-mark" stroke={1.4} />
+          <h1 className="wordmark" id="resting">
+            Kindred
+          </h1>
+          <p className="tagline">
+            Rooms are unavailable right now. Try again in a little while.
           </p>
         </section>
       </main>

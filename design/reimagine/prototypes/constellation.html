@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Constellation | Kindred</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { color-scheme: light; --paper:#edf3f5; --paper-light:#f7fafb; --ink:#203843; --muted:#526c76; --rule:#a9bac1; --accent:#a44125; font-family:"Source Sans 3",Arial,sans-serif; }
+    * { box-sizing:border-box; }
+    html,body { margin:0; min-height:100%; }
+    body { background:var(--paper); color:var(--ink); }
+    button,input { font:inherit; }
+    button { cursor:pointer; min-height:44px; }
+    :focus-visible { outline:3px solid var(--accent); outline-offset:4px; }
+    .app { min-height:100dvh; max-width:1440px; margin:auto; padding:16px clamp(18px,3vw,44px) 24px; display:flex; flex-direction:column; }
+    header { width:100%; display:flex; justify-content:space-between; align-items:center; min-height:48px; }
+    .wordmark { font-size:22px; font-weight:700; letter-spacing:-.045em; }
+    .room-button { border:1px solid var(--rule); background:transparent; color:var(--ink); border-radius:99px; padding:6px 18px; font-weight:600; }
+    main { width:100%; flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+    .intro { margin:0 auto 4px; max-width:640px; text-align:center; color:var(--muted); font-size:15px; line-height:1.35; }
+    .headline { min-height:72px; margin:0 auto; max-width:780px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
+    .headline h1 { margin:0; font-size:clamp(22px,3vw,32px); line-height:1.12; font-weight:600; letter-spacing:-.025em; }
+    .headline p { margin:6px 0 0; color:var(--muted); font-size:clamp(15px,1.5vw,18px); line-height:1.2; }
+    .board { position:relative; width:min(100%,min(67vh,650px)); aspect-ratio:1; flex:none; }
+    .map { width:100%; height:100%; position:relative; }
+    svg { width:100%; height:100%; display:block; overflow:visible; }
+    .orbit { fill:none; stroke:var(--rule); stroke-width:3; stroke-dasharray:3 12; opacity:.65; }
+    .edge { fill:none; stroke:var(--ink); stroke-linecap:round; opacity:.72; }
+    .edge.new { stroke:var(--accent); opacity:1; stroke-dasharray:var(--length); stroke-dashoffset:var(--length); animation:trace .62s ease-out forwards; animation-delay:var(--delay); }
+    @keyframes trace { to { stroke-dashoffset:0; } }
+    .point { stroke:var(--ink); stroke-width:2.2; fill:var(--paper); }
+    .point.answered { fill:var(--ink); }
+    .point.matched { fill:var(--accent); stroke:var(--accent); }
+    .node-label { position:absolute; width:clamp(84px,22%,118px); transform:translateX(-50%); text-align:center; line-height:1.08; pointer-events:none; }
+    .node-label strong, .node-label span { width:fit-content; max-width:100%; margin-left:auto; margin-right:auto; }
+    .node-label strong { display:block; font-size:clamp(14px,2vw,18px); font-weight:700; }
+    .node-label span { display:block; margin-top:3px; font-size:clamp(13px,1.65vw,15px); color:var(--muted); overflow-wrap:anywhere; }
+    .node-label .score { color:var(--accent); font-weight:700; }
+    .node-label.side-left { transform:none; text-align:left; }
+    .node-label.side-left strong, .node-label.side-left span { margin-left:0; }
+    .node-label.side-right { transform:translateX(-100%); text-align:right; }
+    .node-label.side-right strong, .node-label.side-right span { margin-right:0; }
+    .center { position:absolute; top:48%; left:50%; transform:translate(-50%,-50%); width:48%; max-width:310px; text-align:center; background:var(--paper); padding:6px 3px; }
+    .center .count { display:block; color:var(--muted); font-size:14px; margin-bottom:8px; }
+    .center h1, .center h2 { font-size:clamp(24px,3vw,37px); letter-spacing:-.035em; font-weight:600; line-height:1.05; margin:0; }
+    .center .hint { margin:9px 0 0; font-size:15px; line-height:1.2; color:var(--muted); }
+    .action-area { min-height:80px; width:100%; display:flex; align-items:flex-start; justify-content:center; padding-top:4px; }
+    .answer-form { width:min(100%,500px); display:flex; gap:8px; }
+    .answer-form label { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    .answer-form input { min-width:0; flex:1; border:1.5px solid var(--ink); background:var(--paper-light); border-radius:5px; color:var(--ink); padding:11px 15px; font-size:18px; min-height:50px; }
+    .answer-form input::placeholder { color:var(--muted); opacity:1; }
+    .primary { border:1.5px solid var(--ink); background:var(--ink); color:#fff; border-radius:5px; padding:10px 22px; font-weight:700; font-size:17px; }
+    .primary:hover { background:#344f5b; }
+    .secondary { background:transparent; border:0; color:var(--ink); text-decoration:underline; text-underline-offset:4px; font-size:16px; padding:10px 12px; }
+    .actions { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:6px 16px; }
+    .waiting-note { color:var(--muted); font-size:17px; margin:8px 0 0; text-align:center; }
+    .lobby { width:min(100%,620px); text-align:center; padding:24px 0 48px; }
+    .lobby h1 { font-size:clamp(30px,5vw,48px); line-height:1.1; letter-spacing:-.04em; margin:0 0 12px; font-weight:600; }
+    .lobby p { color:var(--muted); font-size:18px; margin:0 0 22px; }
+    .code { font-size:clamp(80px,17vw,160px); line-height:1; font-weight:700; letter-spacing:-.075em; margin:12px 0 25px; }
+    .arrivals { display:flex; justify-content:center; flex-wrap:wrap; gap:10px; list-style:none; padding:0; margin:0 auto 35px; }
+    .arrivals li { border:1px solid var(--rule); padding:8px 16px; border-radius:99px; font-size:17px; background:var(--paper-light); }
+    .lobby .rule { font-size:17px; color:var(--ink); margin:0 0 26px; }
+    dialog { border:1px solid var(--rule); border-radius:12px; width:min(420px,calc(100% - 28px)); max-height:90vh; padding:28px; color:var(--ink); background:var(--paper-light); box-shadow:0 20px 70px #20384325; }
+    dialog::backdrop { background:#20384390; }
+    dialog h2 { margin:0 0 15px; font-size:28px; }
+    dialog p { margin:8px 0; color:var(--muted); }
+    dialog .sheet-code { font-size:42px; letter-spacing:.04em; font-weight:700; color:var(--ink); }
+    dialog ul { padding-left:20px; columns:2; }
+    dialog a { color:var(--ink); text-underline-offset:4px; display:inline-flex; align-items:center; min-height:44px; padding:4px 8px; }
+    .sheet-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:22px; }
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    @media (max-width:650px) {
+      .app { padding:12px 14px 18px; }
+      .wordmark { font-size:21px; }
+      main { justify-content:flex-start; padding-top:4px; }
+      .intro { font-size:14px; }
+      .headline { min-height:72px; }
+      .headline h1 { font-size:23px; }
+      .headline p { font-size:15px; }
+      .board { width:min(100%,480px); }
+      .center { width:51%; top:48%; }
+      .center h1, .center h2 { font-size:clamp(20px,5.6vw,27px); }
+      .center .count { font-size:12px; margin-bottom:5px; }
+      .center .hint { font-size:12px; margin-top:5px; }
+      .node-label { width:23%; }
+      .node-label strong { font-size:14px; }
+      .node-label span { font-size:13px; }
+      .action-area { min-height:85px; }
+      .answer-form input { font-size:16px; }
+      .primary { padding:10px 16px; font-size:16px; }
+      .lobby { padding-top:45px; }
+    }
+    @media (max-width:370px) { .node-label { width:25%; } .node-label strong, .node-label span { font-size:13px; } .center h1, .center h2 { font-size:20px; } }
+    @media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; transition:none!important; } .edge.new { animation:appear .16s ease-out forwards; stroke-dasharray:none; stroke-dashoffset:0; opacity:0; } @keyframes appear { to { opacity:1; } } }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header><div class="wordmark">Kindred</div><button class="room-button" id="room-button" type="button" aria-haspopup="dialog">Room</button></header>
+  <main id="main"></main>
+  <div id="announcement" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+</div>
+<dialog id="room-dialog" aria-labelledby="room-heading">
+  <h2 id="room-heading">Room</h2><p>Share this code to invite someone.</p><div class="sheet-code">KDRD</div>
+  <div class="sheet-actions"><button class="primary" id="copy-invite" type="button">Copy invite</button></div>
+  <p>People here</p><ul id="room-people"></ul>
+  <div class="sheet-actions"><a href="index.html">All prototypes</a><button class="secondary" id="leave" type="button">Leave room</button><button class="secondary" id="close-room" type="button">Close</button></div>
+</dialog>
+<script src="sim.js"></script>
+<script>
+(() => {
+  const sim = window.KindredSim;
+  const params = new URLSearchParams(location.search);
+  const playerCount = Math.max(2, Math.min(5, Number(params.get('players')) || 5));
+  const names = ['You', ...sim.BOTS.slice(0, playerCount - 1)];
+  const samples = ['batteries', 'Batman and Robin', 'pepperoni', 'honey', 'rain', 'phone'];
+  const game = { phase:'lobby', q:0, rounds:[], answers:[], arrived:new Set(), pending:null };
+  const main = document.getElementById('main');
+  const announcement = document.getElementById('announcement');
+  const people = document.getElementById('room-people');
+  const room = document.getElementById('room-dialog');
+  let timers = [];
+  const delay = (fn, ms) => { const id = setTimeout(fn, ms); timers.push(id); };
+  const clearTimers = () => { timers.forEach(clearTimeout); timers=[]; };
+  const escapeHTML = (value) => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const roundAnswers = q => [{name:'You', text:samples[q]}, ...sim.botAnswers(q,playerCount-1)];
+  const tally = () => sim.pairTally(game.rounds.map(r => r.cluster));
+  function prepareLink() {
+    const phase=params.get('state');
+    if (!phase || phase==='lobby') return;
+    const q = phase==='end' ? 5 : Math.max(0,Math.min(5,Number(params.get('q')) || 0));
+    game.q=q;
+    for (let n=0; n<q; n++) { const answers=roundAnswers(n); game.rounds.push({answers,cluster:sim.cluster(n,answers)}); }
+    if (phase==='question') game.phase='question';
+    else if (phase==='waiting') { game.phase='waiting'; game.answers=[{name:'You',text:samples[q]}]; game.arrived=new Set(['You']); }
+    else if (phase==='reveal' || phase==='override' || phase==='end') {
+      if (phase==='end') {
+        const answers=roundAnswers(q); game.rounds.push({answers,cluster:sim.cluster(q,answers)});
+        game.phase='end';
+      } else {
+        game.answers=roundAnswers(q);
+        game.arrived=new Set(names);
+        game.rounds.push({answers:game.answers,cluster:sim.cluster(q,game.answers)});
+        game.phase=phase;
+        if (phase==='override') game.pending='Jo';
+      }
+    }
+  }
+  function pairs(cluster) {
+    return cluster.groups.flatMap(group => group.members.flatMap((member,i) => group.members.slice(i+1).map(other => [member.name,other.name])));
+  }
+  function pairKey(a,b) { return [a,b].sort().join('|'); }
+  const pairName = (a,b) => a==='You' ? `You and ${b}` : b==='You' ? `You and ${a}` : `${a} and ${b}`;
+  function currentMatches() { return game.rounds.length ? pairs(game.rounds.at(-1).cluster) : []; }
+  function youMatch() { return currentMatches().filter(p => p.includes('You')).map(p => p.find(n=>n!=='You')); }
+  function finalSummary() {
+    const list=tally();
+    const best=list[0];
+    const you=list.find(p=>p.a==='You' || p.b==='You');
+    return {
+      headline: best ? `${pairName(best.a,best.b)} are kindred: ${best.count} of 6.` : 'No pairs matched across six questions.',
+      personal: you ? `You matched ${you.a==='You' ? you.b : you.a} most: ${you.count} of 6.` : 'You did not match anyone this game.'
+    };
+  }
+  function revealSummary() {
+    const round=game.rounds.at(-1);
+    const matched=round.cluster.groups;
+    let headline;
+    if (round.merge) {
+      const other=round.merge;
+      headline=`You and ${other} agreed ${game.answers.find(a=>a.name==='You').text} and ${game.answers.find(a=>a.name===other).text} meant the same thing.`;
+    } else if (!matched.length) headline='Every answer was different this time.';
+    else {
+      const group=matched[0];
+      const roster=group.members.map(m=>m.name);
+      const answer=group.members[0].text.toLowerCase();
+      headline=roster.length===2 ? `${roster.join(' and ')} both said ${answer}.` : `${roster.slice(0,-1).join(', ')}, and ${roster.at(-1)} all said ${answer}.`;
+    }
+    const personal=youMatch();
+    return {headline,personal: personal.length ? `You matched ${personal.join(' and ')}. ${personal.length} ${personal.length===1?'dot':'dots'}.` : 'No one matched you this time.'};
+  }
+  function positions() {
+    if (names.length===2) return {You:[50,83],Sam:[50,17]};
+    if (names.length===3) return {You:[50,83],Sam:[18,34],Jo:[82,34]};
+    if (names.length===4) return {You:[50,83],Sam:[17,55],Jo:[30,20],Priya:[78,27]};
+    return {You:[50,83],Sam:[17,57],Jo:[29,21],Priya:[71,21],Theo:[83,57]};
+  }
+  function edgeRoute(a,b,pos) {
+    const [first,second]=[a,b].sort();
+    const [x1,y1]=pos[first].map(n=>n*10), [x2,y2]=pos[second].map(n=>n*10);
+    const centerClear=(x,y)=>((x-500)/275)**2+((y-480)/205)**2>=1;
+    const linePoint=t=>[x1+(x2-x1)*t,y1+(y2-y1)*t];
+    if (Array.from({length:19},(_,i)=>linePoint((i+1)/20)).every(([x,y])=>centerClear(x,y))) {
+      return {d:`M ${x1} ${y1} L ${x2} ${y2}`,length:Math.hypot(x2-x1,y2-y1)+15};
+    }
+    const mx=(x1+x2)/2, my=(y1+y2)/2;
+    let ux=mx-500, uy=my-500;
+    if (Math.hypot(ux,uy)<15) { ux=y1-y2; uy=x2-x1; }
+    const unit=Math.hypot(ux,uy); ux/=unit; uy/=unit;
+    const others=names.filter(n=>n!==a && n!==b).map(n=>pos[n].map(v=>v*10));
+    const candidates=[1,-1].map(sign=>{
+      const cx=2*(500+sign*ux*325)-mx, cy=2*(500+sign*uy*325)-my;
+      let length=0, nearest=Infinity, crosses=false, previous=[x1,y1];
+      for (let i=1;i<=40;i++) {
+        const t=i/40, u=1-t;
+        const point=[u*u*x1+2*u*t*cx+t*t*x2,u*u*y1+2*u*t*cy+t*t*y2];
+        length+=Math.hypot(point[0]-previous[0],point[1]-previous[1]); previous=point;
+        if (!centerClear(...point)) crosses=true;
+        if (i>=3 && i<=37) for (const other of others) nearest=Math.min(nearest,Math.hypot(point[0]-other[0],point[1]-other[1]));
+      }
+      return {d:`M ${x1} ${y1} Q ${cx.toFixed(1)} ${cy.toFixed(1)} ${x2} ${y2}`,length:length+15,score:nearest-length*.02-(crosses?1000:0)};
+    });
+    return candidates[0].score>=candidates[1].score ? candidates[0] : candidates[1];
+  }
+  function chart() {
+    const pos=positions();
+    const visible=game.phase==='reveal' || game.phase==='override' || game.phase==='end';
+    const historic=game.phase==='end' ? game.rounds : game.rounds.slice(0,-(visible ? 1 : 0) || undefined);
+    const old=sim.pairTally(historic.map(r=>r.cluster));
+    const current=visible && game.phase!=='end' ? currentMatches() : [];
+    const currentKeys=new Set(current.map(p=>pairKey(...p)));
+    const counts=new Map(tally().map(p=>[pairKey(p.a,p.b),p.count]));
+    const oldEdges=old.map(p=>[p.a,p.b]).filter(([a,b])=>!currentKeys.has(pairKey(a,b)));
+    const lines=[...oldEdges.map(([a,b])=>({a,b,fresh:false})),...current.map(([a,b])=>({a,b,fresh:true}))];
+    const edgeHTML=lines.map(({a,b,fresh},i)=>{
+      const route=edgeRoute(a,b,pos);
+      const width=1.4+(counts.get(pairKey(a,b))||1)*.9;
+      return `<path class="edge ${fresh?'new':''}" d="${route.d}" stroke-width="${width}" style="--length:${Math.ceil(route.length)};--delay:${i*105}ms"/>`;
+    }).join('');
+    const nodeHTML=names.map(name=>{
+      const [x,y]=pos[name];
+      const answered=game.phase==='lobby' || game.phase==='question' ? false : game.phase==='waiting' ? game.arrived.has(name) : true;
+      const matched=visible && (game.phase==='end' ? tally().some(p=>p.a===name || p.b===name) : current.some(p=>p.includes(name)));
+      return `<circle class="point ${answered?'answered':''} ${matched?'matched':''}" cx="${x*10}" cy="${y*10}" r="${name==='You'?10:8}"/>`;
+    }).join('');
+    const labels=names.map(name=>{
+      const [x,y]=pos[name];
+      const text=visible && game.phase!=='end' ? game.answers.find(a=>a.name===name)?.text : null;
+      const total=game.phase==='end' ? tally().filter(p=>p.a===name || p.b===name).reduce((s,p)=>s+p.count,0) : null;
+      const above=names.length>2 && name!=='You';
+      const labelTop=above ? `calc(${y}% - ${visible ? 76 : 34}px)` : `calc(${y}% + 12px)`;
+      const side=x<20 && y>40 ? 'side-left' : x>80 && y>40 ? 'side-right' : '';
+      const left=side==='side-left' ? '8px' : side==='side-right' ? 'calc(100% - 8px)' : `${names.length===2?68:x}%`;
+      return `<div class="node-label ${side}" role="group" ${game.phase==='waiting'?`aria-label="${name}, ${game.arrived.has(name)?'answered':'not answered yet'}"`:''} style="left:${left};top:${labelTop}"><strong>${name}</strong>${text ? `<span>${escapeHTML(text)}</span>` : total!==null ? `<span class="score">${total} ${total===1?'dot':'dots'}</span>` : ''}</div>`;
+    }).join('');
+    return `<div class="map" role="group" aria-label="The room's connections. ${game.phase==='end' ? 'Final pairs shown.' : current.length ? current.length+' matching pairs this question.' : 'Players arranged on a ring.'}"><svg viewBox="0 0 1000 1000" aria-hidden="true"><circle class="orbit" cx="500" cy="500" r="335"/>${edgeHTML}${nodeHTML}</svg>${labels}</div>`;
+  }
+  function centerContent() {
+    if (game.phase==='end') return `<div class="center"><span class="count">Six questions played</span><h2>Your group, connected.</h2></div>`;
+    const count=`Question ${game.q+1} of 6`;
+    const hint=game.phase==='waiting' ? `${game.arrived.size} of ${names.length} answered` : game.phase==='override' ? 'Waiting for agreement' : '';
+    const heading=game.phase==='question'?'h1':'h2';
+    return `<div class="center"><span class="count">${count}</span><${heading}>${escapeHTML(sim.PROMPTS[game.q].text)}</${heading}>${hint?`<p class="hint">${hint}</p>`:''}</div>`;
+  }
+  function render() {
+    people.innerHTML=names.map(n=>`<li>${n}</li>`).join('');
+    if (game.phase==='lobby') {
+      main.innerHTML=`<section class="lobby"><h1>Answer alike. Find your people.</h1><p>Give friends this code to join your room.</p><div class="code" aria-label="Room code K D R D">KDRD</div><ul class="arrivals">${names.map(n=>`<li>${n}</li>`).join('')}</ul><p class="rule">Answer six questions. Get one dot for every person who thought alike.</p><button class="primary" id="start" type="button">Start game</button></section>`;
+      document.getElementById('start').addEventListener('click',()=>{ game.phase='question'; render(); });
+      return;
+    }
+    let summary={headline:'',personal:''};
+    if (game.phase==='reveal' || game.phase==='override') summary=revealSummary();
+    if (game.phase==='end') summary=finalSummary();
+    const isResult=['reveal','override','end'].includes(game.phase);
+    const headerText=game.phase==='waiting' ? 'Your answer is in. Waiting for everyone.' : summary.headline;
+    let actions='';
+    if (game.phase==='question') actions=`<form class="answer-form" id="answer-form"><label for="answer">Your answer</label><input id="answer" maxlength="60" autocomplete="off" placeholder="Your answer" required><button class="primary" type="submit">Send answer</button></form>`;
+    if (game.phase==='waiting') actions=`<p class="waiting-note">${game.arrived.size} of ${names.length} answered</p>`;
+    if (game.phase==='reveal' || game.phase==='override') {
+      const allowOverride=game.phase==='reveal' && !youMatch().length;
+      actions=`<div class="actions"><button class="primary" id="next" type="button">${game.q===5?'See results':'Next question'}</button>${allowOverride?'<button class="secondary" id="override" type="button">We meant the same thing</button>':''}${game.phase==='override'?`<p class="waiting-note">Waiting for ${game.pending} to agree</p>`:''}</div>`;
+    }
+    if (game.phase==='end') actions=`<div class="actions"><button class="primary" id="copy-results" type="button">Copy results</button><button class="secondary" id="again" type="button">Play again</button></div>`;
+    main.innerHTML=`${game.phase==='question' && game.q===0 ? '<p class="intro">Each shared answer draws a line between people.</p>':''}<section class="headline" aria-live="off">${headerText?`<h1>${escapeHTML(headerText)}</h1>`:''}${isResult?`<p>${escapeHTML(summary.personal)}</p>`:''}</section><div class="board">${chart()}${centerContent()}</div><div class="action-area">${actions}</div>`;
+    if (isResult) announcement.textContent=`${summary.headline} ${summary.personal}`;
+    if (game.phase==='question') {
+      document.getElementById('answer-form').addEventListener('submit',event=>{
+        event.preventDefault();
+        const text=document.getElementById('answer').value.trim();
+        if (!text) return;
+        game.answers=[{name:'You',text}]; game.arrived=new Set(['You']); game.phase='waiting'; render();
+        sim.botAnswers(game.q,playerCount-1).forEach((answer,i)=>delay(()=>{
+          game.answers.push(answer); game.arrived.add(answer.name);
+          if (game.arrived.size===names.length) {
+            game.rounds.push({answers:game.answers,cluster:sim.cluster(game.q,game.answers)});
+            game.phase='reveal'; render();
+          } else render();
+        },600+i*(2400/Math.max(1,playerCount-2))));
+      });
+    }
+    if (game.phase==='reveal' || game.phase==='override') {
+      document.getElementById('next').addEventListener('click',()=>{
+        clearTimers(); game.pending=null;
+        if (game.q===5) game.phase='end';
+        else { game.q++; game.phase='question'; game.answers=[]; game.arrived=new Set(); }
+        render();
+      });
+      const override=document.getElementById('override');
+      if (override) override.addEventListener('click',()=>{
+        const options=names.filter(n=>n!=='You');
+        main.querySelector('.action-area').innerHTML=`<div class="actions"><span>Who meant the same thing?</span>${options.map(n=>`<button class="secondary choose-person" type="button" data-name="${n}">${n}</button>`).join('')}<button class="secondary" id="cancel-choice" type="button">Cancel</button></div>`;
+        main.querySelectorAll('.choose-person').forEach(button=>button.addEventListener('click',()=>{
+          const name=button.dataset.name;
+          game.pending=name; game.phase='override'; render();
+          delay(()=>{
+            const merges=[['You',name]];
+            game.rounds.at(-1).cluster=sim.cluster(game.q,game.answers,merges);
+            game.rounds.at(-1).merge=name;
+            game.phase='reveal'; game.pending=null; render();
+            announcement.textContent=`${name} agreed. You matched ${name}.`;
+          },1200);
+        }));
+        document.getElementById('cancel-choice').addEventListener('click',render);
+      });
+    }
+    if (game.phase==='end') {
+      document.getElementById('copy-results').addEventListener('click',async()=>{
+        const rows=tally().map(p=>`${pairName(p.a,p.b)}: ${p.count} of 6`);
+        const text=['Kindred: our constellation',...rows,'Six questions. No answers spoiled.'].join('\n');
+        try { await navigator.clipboard.writeText(text); announcement.textContent='Copied results.'; }
+        catch { announcement.textContent='Could not copy results.'; }
+      });
+      document.getElementById('again').addEventListener('click',()=>{ clearTimers(); game.phase='lobby'; game.q=0; game.rounds=[]; game.answers=[]; game.arrived=new Set(); render(); });
+    }
+  }
+  document.getElementById('room-button').addEventListener('click',()=>room.showModal());
+  document.getElementById('close-room').addEventListener('click',()=>room.close());
+  document.getElementById('leave').addEventListener('click',()=>{room.close();clearTimers();game.phase='lobby';game.q=0;game.rounds=[];game.answers=[];game.arrived=new Set();render();});
+  document.getElementById('copy-invite').addEventListener('click',async()=>{
+    try { await navigator.clipboard.writeText(`${location.origin}${location.pathname}?state=lobby`); announcement.textContent='Copied invite.'; }
+    catch { announcement.textContent='Could not copy invite.'; }
+  });
+  prepareLink(); render();
+})();
+</script>
+</body>
+</html>

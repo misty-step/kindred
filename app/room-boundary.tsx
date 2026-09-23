@@ -27,23 +27,27 @@ export class RoomBoundary extends Component<Props, State> {
   override render() {
     if (this.state.error !== null) {
       return (
-        <section className="panel status-panel">
-          <p className="eyebrow">Hold that thought</p>
-          <h2>We could not open this room.</h2>
-          <p role="alert">{errorMessage(this.state.error)}</p>
-          <div className="button-row">
+        <section className="screen" aria-labelledby="room-error">
+          <h1 className="headline big" id="room-error">
+            This room didn’t open.
+          </h1>
+          <p className="sub" role="alert">
+            {errorMessage(this.state.error)}
+          </p>
+          <div className="actions">
             <button
+              className="btn"
               type="button"
               onClick={() => this.setState({ error: null })}
             >
-              Retry room
+              Try again
             </button>
             <button
+              className="btn secondary"
               type="button"
-              className="secondary"
               onClick={this.props.onExit}
             >
-              Return to lobby
+              Back to start
             </button>
           </div>
         </section>

@@ -2,17 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   ANSWER_MAX_CHARS,
-  applyMutualOverrides,
   clusterAnswers,
-  hiveMindRoundScores,
+  exactPairs,
   normalizeAnswer,
   pairKey,
-  playersShareCluster,
+  pairStandings,
   retainedVerdictsForRetry,
   revealReady,
-  soulmatePairs,
-  soulmateRoundScores,
-  twoPlayerSessionRecord,
+  topPairs,
   validateAnswer,
   type AnswerSubmission,
   type OracleOutcome,
@@ -205,144 +202,68 @@ test("clustering is deterministic for identical inputs", async () => {
   assert.deepEqual(runA, runB);
 });
 
-test("mutual two-player override merges shared-memory answers", async () => {
-  const { oracle } = scripted({});
-  const result = await clusterAnswers(
-    [sub("p1", "the lake summer"), sub("p2", "grandpa's boat")],
-    oracle,
-  );
-  assert.equal(result.clusters.length, 2);
-  assert.equal(playersShareCluster(result.clusters, "p1", "p2"), false);
-
-  const merged = applyMutualOverrides(result, [
-    { playerA: "p1", playerB: "p2" },
-  ]);
-  assert.equal(merged.clusters.length, 1);
-  assert.equal(playersShareCluster(merged.clusters, "p1", "p2"), true);
-
-  // Idempotent: re-applying does not duplicate or split.
-  const again = applyMutualOverrides(merged, [
-    { playerA: "p1", playerB: "p2" },
-  ]);
-  assert.equal(again.clusters.length, 1);
-  assert.equal(again.clusters[0]?.answers.length, 2);
-});
-
-test("Hive Mind party scoring: one point per other player in the group", async () => {
-  const { oracle } = scripted({ [pairKey("dog", "puppy")]: "match" });
-  const result = await clusterAnswers(
-    [sub("p1", "dog"), sub("p2", "puppy"), sub("p3", "cat"), sub("p5", "dog")],
-    oracle,
-  );
-  const scores = hiveMindRoundScores(result.clusters, [
-    "p1",
-    "p2",
-    "p3",
-    "p4",
-    "p5",
-  ]);
-  assert.equal(scores.get("p1"), 2);
-  assert.equal(scores.get("p2"), 2);
-  assert.equal(scores.get("p5"), 2);
-  assert.equal(scores.get("p3"), 0);
-  assert.equal(scores.get("p4"), 0); // no answer this round
-});
-
-test("Hive Mind n-1 ceiling: all players sharing one group score n-1", async () => {
-  const { oracle, asked } = scripted({});
-  const submissions = ["p1", "p2", "p3", "p4"].map((p) => sub(p, "Coffee"));
-  const result = await clusterAnswers(submissions, oracle);
-  assert.equal(asked.length, 0); // canonical duplicates, no oracle
-  const scores = hiveMindRoundScores(result.clusters, ["p1", "p2", "p3", "p4"]);
-  for (const points of scores.values()) {
-    assert.equal(points, 3);
-  }
-});
-
-test("Soulmate: 2 for partner match, 4 when no outsider matches, else 0", async () => {
-  const { oracle, asked } = scripted({
-    [pairKey("sunset", "dusk")]: "match",
-  });
+test("exact pairs score, crowds and singles do not", async () => {
+  const { oracle } = scripted({ [pairKey("car", "automobile")]: "match" });
   const result = await clusterAnswers(
     [
-      sub("p1", "Our Song"),
-      sub("p2", "our song"), // canonical duplicate -> unique pair group
-      sub("p3", "sunset"),
-      sub("p4", "dusk"),
-      sub("p5", "sunset"), // outsider in p3/p4's group
-      sub("p6", "kettle"),
+      sub("p2", "car"),
+      sub("p1", "automobile"),
+      sub("p3", "moon"),
+      sub("p4", "moon"),
+      sub("p5", "moon"),
+      sub("p6", "alone"),
     ],
     oracle,
   );
-  assert.deepEqual(asked, [
-    pairKey("our song", "sunset"),
-    pairKey("our song", "dusk"),
-    pairKey("sunset", "dusk"),
-    pairKey("our song", "kettle"),
-    pairKey("sunset", "kettle"),
-  ]);
-  const scores = soulmateRoundScores(result.clusters, [
-    ["p1", "p2"],
-    ["p3", "p4"],
-    ["p5", "p6"],
-  ]);
-  assert.equal(scores.get("p1"), 4); // unique partner match
-  assert.equal(scores.get("p2"), 4);
-  assert.equal(scores.get("p3"), 2); // matched but outsider present
-  assert.equal(scores.get("p4"), 2);
-  assert.equal(scores.get("p5"), 0); // matched group but not with partner
-  assert.equal(scores.get("p6"), 0);
-});
-
-test("Soulmate honors a mutual override as a partner match", async () => {
-  const { oracle } = scripted({});
-  const result = await clusterAnswers(
-    [sub("p1", "that dusty arcade"), sub("p2", "the pinball place")],
-    oracle,
+  assert.deepEqual(exactPairs(result.clusters), [{ a: "p1", b: "p2" }]);
+  assert.deepEqual(
+    exactPairs([
+      {
+        anchor: "same",
+        answers: [
+          { playerId: "p1", text: "same", normalized: "same" },
+          { playerId: "p1", text: "same", normalized: "same" },
+        ],
+      },
+    ]),
+    [],
   );
-  assert.equal(playersShareCluster(result.clusters, "p1", "p2"), false);
-  const merged = applyMutualOverrides(result, [
-    { playerA: "p1", playerB: "p2" },
-  ]);
-  const scores = soulmateRoundScores(merged.clusters, [["p1", "p2"]]);
-  assert.equal(scores.get("p1"), 4); // unique after override, no outsider
-  assert.equal(scores.get("p2"), 4);
 });
 
-test("two-player session record counts shared thoughts, not compatibility", () => {
-  const rounds = [
-    { matched: true },
-    { matched: true },
-    { matched: false },
-    { matched: true },
-    { matched: true },
-    { matched: false },
-    { matched: true },
-    { matched: false },
-  ];
-  const record = twoPlayerSessionRecord(rounds);
-  assert.equal(record.roundsPlayed, 8);
-  assert.equal(record.sharedThoughts, 5);
-  assert.equal(record.record, "shared 5 of 8 thoughts");
-  assert.ok(!record.record.includes("%"));
-  assert.ok(!record.record.toLowerCase().includes("compat"));
-});
-
-test("soulmatePairs pairs seats in order; odd tail stays unpaired", () => {
-  // Regression: the pre-fix game.ts construction indexed participants past
-  // the end for any count and crashed Soulmate starts with a TypeError.
-  assert.deepEqual(soulmatePairs(["a", "b"]), [["a", "b"]]);
-  assert.deepEqual(soulmatePairs(["a", "b", "c"]), [["a", "b"]]);
-  assert.deepEqual(soulmatePairs(["a", "b", "c", "d"]), [
-    ["a", "b"],
-    ["c", "d"],
+test("standings count scored pairs, update latest delta and resolve top ties", () => {
+  const standings = pairStandings([
+    {
+      pairs: [
+        { a: "a", b: "b", scored: true },
+        { a: "c", b: "d", scored: true },
+      ],
+    },
+    {
+      pairs: [
+        { a: "c", b: "d", scored: false },
+        { a: "a", b: "b", scored: true },
+      ],
+    },
+    {
+      pairs: [
+        { a: "c", b: "d", scored: true },
+        { a: "e", b: "f", scored: false },
+      ],
+    },
   ]);
-  assert.deepEqual(soulmatePairs(["a", "b", "c", "d", "e"]), [
-    ["a", "b"],
-    ["c", "d"],
+  assert.deepEqual(standings, [
+    { a: "a", b: "b", total: 2, delta: 0 },
+    { a: "c", b: "d", total: 2, delta: 1 },
   ]);
-  assert.deepEqual(soulmatePairs(["a"]), []);
-  assert.deepEqual(soulmatePairs([]), []);
+  assert.deepEqual(topPairs(standings), [
+    { a: "a", b: "b" },
+    { a: "c", b: "d" },
+  ]);
+  assert.deepEqual(
+    topPairs(pairStandings([{ pairs: [{ a: "a", b: "b", scored: false }] }])),
+    [],
+  );
+  assert.deepEqual(topPairs([]), []);
 });
 
 test("clusterAnswers tolerates empty input", async () => {

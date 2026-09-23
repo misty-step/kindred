@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>Kindred</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700;800&family=Newsreader:opsz,wght@6..72,500;6..72,600;6..72,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #ffffff;
+    --ink: #141414;
+    --quiet: #5f5f5a;
+    --rule: #d9d9d2;
+    --down: #ecece6;
+    --g1: #f6c744; /* marigold */
+    --g2: #86d6a8; /* mint */
+    --g3: #9cc6f2; /* sky */
+    --g4: #c4aef0; /* lilac */
+    --g5: #f5a38e; /* coral */
+    --g6: #f2a9c9; /* rose */
+    --ui: "Libre Franklin", "Franklin Gothic Medium", "Helvetica Neue", Arial, sans-serif;
+    --display: "Newsreader", Georgia, "Times New Roman", serif;
+    --ease: cubic-bezier(.2, .8, .2, 1);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--paper); color: var(--ink); }
+  body { font: 400 17px/1.45 var(--ui); -webkit-font-smoothing: antialiased; min-height: 100dvh; }
+  button, input { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  /* Banner: only while something is wrong */
+  .banner { background: var(--ink); color: var(--paper); text-align: center; font: 600 14px/1 var(--ui); padding: 10px 16px; }
+  .banner[hidden] { display: none; }
+
+  /* Top bar */
+  .bar { max-width: 600px; margin: 0 auto; height: 60px; padding: 0 16px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+  .brand { display: inline-flex; align-items: center; gap: 8px; font: 700 21px/1 var(--display); letter-spacing: -0.01em; text-decoration: none; color: var(--ink); justify-self: start; }
+  .brand svg { width: 30px; height: 20px; }
+  .progress { display: flex; gap: 7px; justify-self: center; align-items: center; }
+  .progress[hidden] { display: none; }
+  .progress i { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--ink); }
+  .progress i.done { background: var(--ink); }
+  .progress i.now { width: 12px; height: 12px; background: var(--g1); }
+  @media (max-width: 440px) { .bar.playing .brand span { display: none; } }
+  .room-btn { justify-self: end; height: 40px; padding: 0 16px; border-radius: 999px; border: 1.5px solid var(--rule); background: var(--paper); font-weight: 600; font-size: 15px; cursor: pointer; }
+  .brand { grid-column: 1; } .progress { grid-column: 2; } .room-btn { grid-column: 3; }
+  .room-btn:hover { border-color: var(--ink); }
+
+  main { max-width: 600px; margin: 0 auto; padding: 8px 20px 40px; min-height: calc(100dvh - 60px); display: flex; flex-direction: column; }
+  .screen { display: flex; flex-direction: column; flex: 1; }
+  .center { text-align: center; }
+
+  h1, h2 { font-family: var(--display); font-weight: 600; letter-spacing: -0.015em; margin: 0; text-wrap: balance; }
+  .prompt { font-size: clamp(32px, 8.4vw, 46px); line-height: 1.08; text-align: center; margin: 9vh 0 28px; }
+  .prompt.small { font-size: clamp(24px, 6vw, 30px); margin: 20px 0 22px; transition: font-size 400ms var(--ease), margin 400ms var(--ease); }
+  .headline { font-size: clamp(26px, 6.6vw, 34px); line-height: 1.12; text-align: center; margin: 28px 0 8px; }
+  .sub { color: var(--quiet); text-align: center; margin: 0 0 4px; font-size: 17px; }
+  .sub strong { color: var(--ink); font-weight: 700; }
+  .fade { opacity: 0; transform: translateY(6px); transition: opacity 420ms var(--ease), transform 420ms var(--ease); }
+  .fade.in { opacity: 1; transform: none; }
+
+  /* Buttons */
+  .actions { margin-top: auto; padding-top: 24px; display: grid; gap: 10px; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+  .btn { height: 54px; padding: 0 28px; border-radius: 999px; border: 2px solid var(--ink); background: var(--ink); color: var(--paper); font-weight: 700; font-size: 17px; cursor: pointer; width: 100%; }
+  .btn:hover:not(:disabled) { background: #333; border-color: #333; }
+  .btn.secondary { background: var(--paper); color: var(--ink); }
+  .btn.secondary:hover:not(:disabled) { background: #f4f4f0; border-color: var(--ink); }
+  .btn:disabled { background: var(--down); border-color: var(--down); color: #8a8a84; cursor: not-allowed; }
+  .link { background: none; border: 0; padding: 10px 6px; min-height: 44px; font-weight: 600; font-size: 16px; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; color: var(--ink); }
+  .hint { color: var(--quiet); font-size: 15px; text-align: center; margin: 10px 0 0; }
+
+  /* Fields */
+  label.field { display: block; font-weight: 600; font-size: 15px; margin: 18px 0 8px; }
+  .input { width: 100%; height: 64px; border: 2px solid var(--ink); border-radius: 10px; padding: 0 18px; font-size: 22px; font-weight: 600; background: var(--paper); text-align: center; }
+  .input::placeholder { color: #737370; font-weight: 500; }
+  .input.code { letter-spacing: 0.4em; text-transform: uppercase; font-size: 28px; font-weight: 800; padding-left: calc(18px + 0.4em); }
+
+  /* Tiles */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+  .tile { position: relative; min-height: 76px; padding: 12px 12px 10px; border-radius: 10px; border: 2px solid var(--rule); background: var(--paper); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; will-change: transform; }
+  .tile .t { font-weight: 700; font-size: 18px; line-height: 1.2; overflow-wrap: anywhere; }
+  .tile .n { font-weight: 500; font-size: 13px; color: var(--quiet); margin-top: 4px; }
+  .tile.me .n { color: var(--ink); font-weight: 700; }
+  .tile.pending { border-style: dashed; }
+  .tile.pending .t { color: var(--quiet); font-weight: 500; font-size: 15px; font-style: italic; }
+  .tile.down { background: var(--down); border-color: var(--down); }
+  .tile.down .t { visibility: hidden; }
+  .tile.mine { border-color: var(--ink); }
+  .tile.flipping { animation: flip 520ms var(--ease) both; }
+  @keyframes flip { 0% { transform: rotateX(0); } 50% { transform: rotateX(90deg); } 100% { transform: rotateX(0); } }
+  .tile.landed { animation: land 360ms var(--ease) both; }
+  @keyframes land { 0% { transform: scale(.94); } 60% { transform: scale(1.02); } 100% { transform: scale(1); } }
+
+  .reveal { display: grid; gap: 10px; }
+  .group { border-radius: 14px; padding: 6px; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; background: transparent; transition: background-color 320ms var(--ease); }
+  .group .tile { flex: 0 1 calc(50% - 2px); }
+  @media (min-width: 560px) { .group .tile { flex-basis: calc(33.333% - 3px); } }
+  .group .tile { transition: background-color 320ms var(--ease), border-color 320ms var(--ease); }
+  .group.formed { background: var(--g); }
+  .group.formed .tile { background: transparent; border-color: transparent; }
+  .group.formed .tile .n { color: var(--ink); }
+  .group.formed .tile.me { box-shadow: inset 0 0 0 2px var(--ink); }
+  .loners { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding: 0 6px; }
+  .loners .tile { flex: 0 1 calc(50% - 4px); }
+  @media (min-width: 560px) { .loners .tile { flex-basis: calc(33.333% - 6px); } }
+  .loners .tile.me { border-color: var(--ink); }
+
+  /* Home demo */
+  .hero-mark { width: 84px; height: 56px; margin: 7vh auto 18px; display: block; }
+  .wordmark { font: 700 clamp(44px, 12vw, 60px)/1 var(--display); letter-spacing: -0.02em; text-align: center; margin: 0; }
+  .tagline { text-align: center; font-size: 19px; margin: 14px auto 0; max-width: 26ch; text-wrap: balance; }
+  .demo { margin: 36px auto 0; width: 100%; max-width: 380px; }
+  .demo .caption { text-align: center; color: var(--quiet); font-size: 15px; margin-top: 12px; }
+  .demo .loners .tile { flex-basis: calc(33.333% - 6px); }
+
+  /* Lobby */
+  .code-tiles { display: flex; justify-content: center; gap: 8px; margin: 10px 0 6px; }
+  .code-tiles span { width: 60px; height: 68px; border: 2px solid var(--ink); border-radius: 10px; display: grid; place-items: center; font: 800 32px/1 var(--ui); }
+  .people { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 2px; }
+  .people li { display: flex; align-items: center; gap: 12px; min-height: 52px; border-bottom: 1px solid #eeeee8; }
+  .people li.arrive { animation: arrive 380ms var(--ease) both; }
+  @keyframes arrive { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .av { width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--ink); display: grid; place-items: center; font-weight: 700; font-size: 15px; flex: none; }
+  .people .who { font-weight: 600; flex: 1; }
+  .people .role { color: var(--quiet); font-size: 14px; }
+  .dots { letter-spacing: 2px; font-size: 14px; }
+  .section-title { font: 600 15px/1.3 var(--ui); color: var(--quiet); margin: 26px 0 4px; }
+  .rule-line { text-align: center; font-size: 17px; margin: 18px auto 0; max-width: 30ch; }
+
+  /* End */
+  .grid-preview { display: grid; gap: 5px; justify-content: center; margin: 18px 0 6px; }
+  .grid-preview .row { display: flex; gap: 5px; }
+  .grid-preview .sq { width: 22px; height: 22px; border-radius: 5px; background: var(--down); }
+  .score { list-style: none; padding: 0; margin: 4px 0 0; }
+  .score li { display: flex; align-items: center; justify-content: space-between; min-height: 46px; border-bottom: 1px solid #eeeee8; font-weight: 600; }
+  .score .count { font-weight: 500; color: var(--quiet); font-size: 15px; }
+
+  /* Sheet */
+  dialog { border: 0; padding: 0; width: min(560px, 100vw); max-height: 88dvh; margin: auto auto 0; border-radius: 18px 18px 0 0; background: var(--paper); color: var(--ink); }
+  @media (min-width: 700px) { dialog { margin: auto; border-radius: 18px; } }
+  dialog::backdrop { background: rgba(20, 20, 20, .38); }
+  dialog[open] { animation: sheet 300ms var(--ease); }
+  @keyframes sheet { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .sheet { padding: 22px 22px calc(22px + env(safe-area-inset-bottom)); }
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; }
+  .sheet-head h2 { font-size: 26px; }
+  .close-x { width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--rule); background: var(--paper); font-size: 22px; line-height: 1; cursor: pointer; }
+  .sheet .btn { margin-top: 10px; }
+  .pick { display: grid; gap: 8px; margin-top: 14px; }
+  .pick button { min-height: 56px; border: 2px solid var(--rule); border-radius: 10px; background: var(--paper); text-align: left; padding: 10px 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .pick button:hover { border-color: var(--ink); }
+  .pick .t { font-weight: 700; }
+  .pick .n { color: var(--quiet); font-size: 14px; }
+
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); background: var(--ink); color: var(--paper); padding: 12px 18px; border-radius: 999px; font-weight: 600; font-size: 15px; opacity: 0; pointer-events: none; transition: opacity 200ms, transform 200ms var(--ease); }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--rule); border-top-color: var(--ink); border-radius: 50%; animation: spin 900ms linear infinite; vertical-align: -2px; margin-right: 8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (min-width: 700px) {
+    .actions { margin-top: 28px; }
+    .actions.row { grid-template-columns: 1fr 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 160ms !important; transition-property: opacity, background-color, border-color !important; }
+    .spinner { animation: none; }
+  }
+</style>
+</head>
+<body>
+<div class="banner" id="banner" role="status" hidden>Reconnecting. Your answer is safe.</div>
+<header class="bar">
+  <a class="brand" href="?" aria-label="Kindred home">
+    <svg viewBox="0 0 30 20" aria-hidden="true"><defs><clipPath id="lens"><circle cx="10" cy="10" r="8.25"/></clipPath></defs><circle cx="20" cy="10" r="8.25" fill="#f6c744" clip-path="url(#lens)"/><circle cx="10" cy="10" r="8.25" fill="none" stroke="#141414" stroke-width="2"/><circle cx="20" cy="10" r="8.25" fill="none" stroke="#141414" stroke-width="2"/></svg>
+    <span>Kindred</span>
+  </a>
+  <div class="progress" id="progress" role="img" aria-label="Question progress" hidden></div>
+  <button class="room-btn" id="roomBtn" type="button" hidden aria-haspopup="dialog">Room</button>
+</header>
+<main id="app"></main>
+<div id="live" class="sr-only" aria-live="polite"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<dialog id="room" aria-labelledby="roomTitle">
+  <div class="sheet">
+    <div class="sheet-head"><h2 id="roomTitle">Room KDRD</h2><button class="close-x" type="button" data-close aria-label="Close">&times;</button></div>
+    <button class="btn secondary" type="button" data-copy-link>Copy invite link</button>
+    <p class="section-title">People</p>
+    <ul class="score" id="roomPeople"></ul>
+    <div id="roomHost"></div>
+    <p class="hint"><a href="index.html">All prototypes</a></p>
+  </div>
+</dialog>
+
+<dialog id="pick" aria-labelledby="pickTitle">
+  <div class="sheet">
+    <div class="sheet-head"><h2 id="pickTitle">Whose answer means the same?</h2><button class="close-x" type="button" data-close aria-label="Close">&times;</button></div>
+    <p class="sub" style="text-align:left">They have to agree before it counts.</p>
+    <div class="pick" id="pickList"></div>
+  </div>
+</dialog>
+
+<script src="sim.js"></script>
+<script>
+(() => {
+  const K = window.KindredSim;
+  const ROUNDS = K.PROMPTS.length;
+  const COLORS = ["--g1", "--g2", "--g3", "--g4", "--g5", "--g6"];
+  const EMOJI = ["\u{1F7E8}", "\u{1F7E9}", "\u{1F7E6}", "\u{1F7EA}", "\u{1F7E7}", "\u{1F7E5}"];
+  const DEFAULT_ME = ["dead batteries", "salt and pepper", "pepperoni", "honey", "lavender", "my dog"];
+  const reduce = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const params = new URLSearchParams(location.search);
+
+  const S = {
+    screen: "home",
+    name: params.get("name") || "",
+    host: params.get("host") !== "0",
+    players: params.get("players") === "2" ? 2 : 5,
+    q: 0,
+    phase: "answering", // answering | waiting | checking | slow | flipping | gathered
+    mine: "",
+    answered: new Set(),
+    history: [],        // per round: { answers, merges }
+    merges: [],
+    pending: null,      // override target name
+    arrived: 1,
+    timers: [],
+    palette: new Map(), // gid -> color index, stable within a round
+  };
+  const bots = () => K.BOTS.slice(0, S.players - 1);
+  const hostName = () => (S.host ? "You" : "Sam");
+
+  const $ = (s, r = document) => r.querySelector(s);
+  const app = $("#app");
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const later = (ms, fn) => { const t = setTimeout(fn, reduce() ? Math.min(ms, 60) : ms); S.timers.push(t); return t; };
+  const clearTimers = () => { S.timers.forEach(clearTimeout); S.timers = []; };
+  const announce = (text) => { $("#live").textContent = ""; setTimeout(() => ($("#live").textContent = text), 30); };
+  function toast(text) { const t = $("#toast"); t.textContent = text; t.classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), 1800); }
+
+  function list(names) {
+    if (names.length === 1) return names[0];
+    if (names.length === 2) return `${names[0]} and ${names[1]}`;
+    return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  }
+  const lower = (names) => names.map((n, i) => (n === "You" && i > 0 ? "you" : n));
+
+  function roundAnswers(q, mine) {
+    return [{ name: "You", text: mine }, ...K.botAnswers(q, S.players - 1)];
+  }
+  function clustered(q, mine, merges) { return K.cluster(q, roundAnswers(q, mine), merges); }
+  function allRounds() { return S.history.map((h, q) => K.cluster(q, h.answers, h.merges)); }
+  function scoreOf(name, rounds) {
+    let s = 0;
+    for (const r of rounds) for (const g of r.groups) if (g.members.some((m) => m.name === name)) s += g.members.length - 1;
+    return s;
+  }
+
+  /* Chrome */
+  function chrome() {
+    const inRoom = S.screen !== "home" && S.screen !== "name" && S.screen !== "join";
+    $("#roomBtn").hidden = !inRoom;
+    const p = $("#progress");
+    p.hidden = S.screen !== "round";
+    document.querySelector(".bar").classList.toggle("playing", !p.hidden);
+    if (!p.hidden) {
+      p.setAttribute("aria-label", `Question ${S.q + 1} of ${ROUNDS}`);
+      p.innerHTML = Array.from({ length: ROUNDS }, (_, i) => `<i class="${i < S.q ? "done" : i === S.q ? "now" : ""}"></i>`).join("");
+    }
+  }
+
+  function go(screen, opts = {}) {
+    clearTimers();
+    S.screen = screen;
+    Object.assign(S, opts);
+    render();
+  }
+
+  function render() {
+    chrome();
+    ({ home, name: nameScreen, join, lobby, round, end })[S.screen]();
+  }
+
+  /* Home */
+  function home() {
+    app.innerHTML = `
+      <section class="screen" aria-labelledby="h">
+        <svg class="hero-mark" viewBox="0 0 30 20" aria-hidden="true"><defs><clipPath id="lens2"><circle cx="10" cy="10" r="8.25"/></clipPath></defs><circle cx="20" cy="10" r="8.25" fill="#f6c744" clip-path="url(#lens2)"/><circle cx="10" cy="10" r="8.25" fill="none" stroke="#141414" stroke-width="1.4"/><circle cx="20" cy="10" r="8.25" fill="none" stroke="#141414" stroke-width="1.4"/></svg>
+        <h1 class="wordmark" id="h">Kindred</h1>
+        <p class="tagline">Everyone answers the same question. See who said the same thing.</p>
+        <div class="demo" aria-hidden="true">
+          <div class="reveal" id="demo"></div>
+          <p class="caption fade" id="demoCap">Sofa and couch count as the same answer.</p>
+        </div>
+        <div class="actions">
+          <button class="btn" type="button" id="start">Start a game</button>
+          <button class="btn secondary" type="button" id="joinBtn">Join a game</button>
+          <p class="hint">2 to 12 players. About 5 minutes.</p>
+        </div>
+      </section>`;
+    $("#start").onclick = () => go("name");
+    $("#joinBtn").onclick = () => go("join");
+    const demoAnswers = [{ name: "Jo", text: "sofa" }, { name: "Sam", text: "chair" }, { name: "Priya", text: "couch" }];
+    const demo = $("#demo");
+    demo.innerHTML = `<div class="loners" style="grid-template-columns:repeat(3,1fr)">${demoAnswers.map((a) => tileHTML(a)).join("")}</div>`;
+    const grouped = { groups: [{ members: [demoAnswers[0], demoAnswers[2]] }], loners: [demoAnswers[1]] };
+    later(1300, () => { gather(demo, grouped, true); later(700, () => $("#demoCap")?.classList.add("in")); });
+  }
+
+  /* Name (host) */
+  function nameScreen() {
+    app.innerHTML = `
+      <form class="screen" id="f" aria-labelledby="h">
+        <h1 class="prompt" id="h">What should we call you?</h1>
+        <label class="sr-only" for="nm">Your name</label>
+        <input class="input" id="nm" autocomplete="nickname" maxlength="24" placeholder="Your name" value="${esc(S.name)}">
+        <div class="actions"><button class="btn" id="go" type="submit">Create room</button></div>
+      </form>`;
+    const nm = $("#nm"), btn = $("#go");
+    const sync = () => (btn.disabled = !nm.value.trim());
+    nm.oninput = sync; sync(); nm.focus();
+    $("#f").onsubmit = (e) => { e.preventDefault(); S.name = nm.value.trim(); go("lobby", { arrived: 1 }); };
+  }
+
+  /* Join */
+  function join() {
+    app.innerHTML = `
+      <form class="screen" id="f" aria-labelledby="h">
+        <h1 class="prompt" id="h">Join a game</h1>
+        <label class="field" for="code">Room code</label>
+        <input class="input code" id="code" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD">
+        <label class="field" for="nm">Your name</label>
+        <input class="input" id="nm" autocomplete="nickname" maxlength="24" placeholder="Your name" value="${esc(S.name)}">
+        <div class="actions"><button class="btn" id="go" type="submit">Join</button></div>
+      </form>`;
+    const code = $("#code"), nm = $("#nm"), btn = $("#go");
+    const sync = () => { code.value = code.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); btn.disabled = code.value.length !== 4 || !nm.value.trim(); };
+    code.oninput = nm.oninput = sync; sync(); code.focus();
+    $("#f").onsubmit = (e) => { e.preventDefault(); S.name = nm.value.trim(); S.host = false; go("lobby", { arrived: S.players }); };
+  }
+
+  /* Lobby */
+  function lobby() {
+    const everyone = ["You", ...bots()];
+    const here = everyone.slice(0, S.arrived);
+    app.innerHTML = `
+      <section class="screen" aria-labelledby="h">
+        <h1 class="headline" id="h" style="margin-top:6vh">Room code</h1>
+        <div class="code-tiles" role="img" aria-label="K D R D">${"KDRD".split("").map((c) => `<span aria-hidden="true">${c}</span>`).join("")}</div>
+        <p class="center" style="margin:0"><button class="link" type="button" data-copy-link>Copy invite link</button></p>
+        <p class="rule-line">Everyone answers the same question in secret. Say the same thing as someone to score.</p>
+        <p class="section-title">${here.length} ${here.length === 1 ? "person" : "people"} here</p>
+        <ul class="people" id="people">${here.map((n, i) => personRow(n, i === here.length - 1 && S.arrived > 1)).join("")}</ul>
+        <div class="actions">
+          ${S.host
+            ? `<button class="btn" type="button" id="startGame" ${here.length < 2 ? "disabled" : ""}>Start game</button>
+               <p class="hint" id="startHint">${here.length < 2 ? "Waiting for one more person." : "Anyone who joins later plays the next question."}</p>`
+            : `<p class="hint" style="font-size:17px;color:var(--ink)">You're in. Waiting for Sam to start.</p>`}
+        </div>
+      </section>`;
+    bindCopy();
+    if (S.host) $("#startGame").onclick = () => startRound(0);
+    if (S.arrived < everyone.length && !params.has("static")) {
+      later(S.arrived === 1 ? 1400 : 900, () => { S.arrived++; lobby(); announce(`${everyone[S.arrived - 1]} joined.`); });
+    }
+  }
+  function personRow(n, arrive) {
+    const isHost = n === hostName();
+    const label = n === "You" ? (S.name || "Ana") + " (you)" : n;
+    return `<li class="${arrive ? "arrive" : ""}"><span class="av" aria-hidden="true">${esc(label[0])}</span><span class="who">${esc(label)}</span><span class="role">${isHost ? "Host" : ""}</span></li>`;
+  }
+
+  /* Round */
+  function startRound(q) {
+    clearTimers();
+    Object.assign(S, { screen: "round", q, phase: "answering", mine: "", answered: new Set(), merges: [], pending: null, palette: new Map() });
+    render();
+    scheduleBots();
+  }
+  function scheduleBots() {
+    bots().forEach((b, i) => later(1800 + i * 1500 + (i % 2) * 700, () => {
+      S.answered.add(b);
+      if (S.phase === "answering") updateAnsweredLine();
+      else if (S.phase === "waiting") { updateWaiting(); announce(`${b} answered.`); }
+      maybeReveal();
+    }));
+  }
+  function maybeReveal() {
+    if (S.phase !== "waiting" || S.answered.size < S.players - 1) return;
+    S.phase = "checking";
+    updateWaiting();
+    announce("Everyone's in.");
+    later(900, () => flipAll());
+  }
+
+  function round() {
+    const P = K.PROMPTS[S.q];
+    if (S.phase === "answering") {
+      app.innerHTML = `
+        <form class="screen" id="f" aria-labelledby="h">
+          <h1 class="prompt" id="h">${esc(P.text)}</h1>
+          <label class="sr-only" for="ans">Your answer</label>
+          <input class="input" id="ans" maxlength="64" autocomplete="off" placeholder="Your answer" value="${esc(S.mine)}">
+          <p class="hint">A word or a few. Nobody sees it until everyone answers.</p>
+          <div class="actions">
+            <button class="btn" type="submit" id="send">Send</button>
+            <p class="hint" id="answeredLine"></p>
+          </div>
+        </form>`;
+      const ans = $("#ans"), send = $("#send");
+      const sync = () => (send.disabled = !ans.value.trim());
+      ans.oninput = sync; sync();
+      if (!params.has("state")) ans.focus();
+      updateAnsweredLine();
+      $("#f").onsubmit = (e) => {
+        e.preventDefault();
+        S.mine = ans.value.trim();
+        S.phase = "waiting";
+        renderWaiting();
+        maybeReveal();
+      };
+      return;
+    }
+    if (S.phase === "waiting" || S.phase === "checking" || S.phase === "slow") return renderWaiting();
+    if (S.phase === "flipping") return renderWaiting(true);
+    if (S.phase === "gathered") return renderGathered(false);
+  }
+
+  function updateAnsweredLine() {
+    const el = $("#answeredLine");
+    if (!el) return;
+    const n = S.answered.size;
+    el.textContent = n === 0 ? "" : `${list([...S.answered])} ${n === 1 ? "has" : "have"} answered.`;
+  }
+
+  function tileHTML(a, cls = "") {
+    const me = a.name === "You";
+    return `<div class="tile ${me ? "me" : ""} ${cls}" data-name="${esc(a.name)}"><span class="t">${esc(a.text)}</span><span class="n">${me ? "You" : esc(a.name)}</span></div>`;
+  }
+
+  function renderWaiting(flipReady) {
+    const P = K.PROMPTS[S.q];
+    const answers = roundAnswers(S.q, S.mine);
+    const status = S.phase === "slow"
+      ? `Still checking answers. This is taking longer than usual.`
+      : S.phase === "checking"
+        ? `<span class="spinner" aria-hidden="true"></span>Everyone's in.`
+        : `Waiting for ${list(bots().filter((b) => !S.answered.has(b)))}.`;
+    app.innerHTML = `
+      <section class="screen" aria-labelledby="h">
+        <h1 class="prompt small" id="h">${esc(P.text)}</h1>
+        <div class="reveal" id="board">
+          <div class="loners" id="flat">${answers.map((a) => {
+            if (a.name === "You") return tileHTML(a, "mine");
+            const done = S.answered.has(a.name) || flipReady;
+            return tileHTML(done ? a : { ...a, text: "Thinking" }, done ? "down" : "pending");
+          }).join("")}</div>
+        </div>
+        <p class="sub" id="status" style="margin-top:22px" aria-live="off">${status}</p>
+        <div class="actions" id="acts">${S.phase === "slow" && S.host ? `<button class="btn secondary" type="button" id="retry">Check again</button>` : ""}</div>
+      </section>`;
+    if ($("#retry")) $("#retry").onclick = () => { S.phase = "checking"; renderWaiting(); later(900, flipAll); };
+  }
+  function updateWaiting() { if (S.screen === "round") renderWaiting(); }
+
+  function flipAll() {
+    S.phase = "flipping";
+    renderWaiting(true);
+    const tiles = [...document.querySelectorAll("#flat .tile")];
+    const others = tiles.filter((t) => t.dataset.name !== "You");
+    $("#status").textContent = "";
+    others.forEach((t, i) => later(i * 130, () => {
+      t.classList.add("flipping");
+      later(260, () => t.classList.remove("down"));
+    }));
+    later(others.length * 130 + 520 + 650, () => {
+      S.phase = "gathered";
+      const result = clustered(S.q, S.mine, S.merges);
+      gather($("#board"), result, false);
+      later(reduce() ? 0 : 520, () => showOutcome(result));
+    });
+  }
+
+  /* Colors stay with a group for the whole round; a group formed by agreement takes the next free color. */
+  function colorFor(gid) {
+    if (!S.palette.has(gid)) S.palette.set(gid, S.palette.size);
+    return COLORS[S.palette.get(gid) % COLORS.length];
+  }
+  function groupedHTML(result) {
+    const groups = result.groups.map((g) => `<div class="group" style="--g: var(${colorFor(g.gid ?? g.members.map((m) => m.name).join("|"))})">${g.members.map((m) => tileHTML(m)).join("")}</div>`).join("");
+    const loners = result.loners.length ? `<div class="loners">${result.loners.map((m) => tileHTML(m, m.name === "You" ? "mine" : "")).join("")}</div>` : "";
+    return groups + loners;
+  }
+
+  /* FLIP: tiles glide from where they were into their groups. */
+  function gather(container, result, isDemo) {
+    const first = new Map();
+    container.querySelectorAll(".tile").forEach((t) => first.set(t.dataset.name, t.getBoundingClientRect()));
+    container.innerHTML = groupedHTML(result);
+    const groups = [...container.querySelectorAll(".group")];
+    if (reduce()) { groups.forEach((g) => g.classList.add("formed")); container.animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: 200 }); return; }
+    const tiles = [...container.querySelectorAll(".tile")];
+    tiles.forEach((t) => {
+      const f = first.get(t.dataset.name);
+      if (!f) return;
+      const l = t.getBoundingClientRect();
+      t.style.transition = "none";
+      t.style.transform = `translate(${f.left - l.left}px, ${f.top - l.top}px)`;
+    });
+    container.getBoundingClientRect();
+    requestAnimationFrame(() => {
+      tiles.forEach((t) => { t.style.transition = "transform 600ms var(--ease), background-color 320ms var(--ease), border-color 320ms var(--ease)"; t.style.transform = ""; });
+      setTimeout(() => groups.forEach((g) => { g.classList.add("formed"); g.querySelectorAll(".tile").forEach((t) => t.classList.add("landed")); }), 380);
+    });
+  }
+
+  function outcomeCopy(result) {
+    const mineGroup = result.groups.find((g) => g.members.some((m) => m.name === "You"));
+    const allSame = result.groups.length === 1 && result.loners.length === 0;
+    let headline, sub = [];
+    if (!result.groups.length) headline = "Every answer was different.";
+    else if (allSame && S.players > 2) headline = "Everyone said the same thing.";
+    else {
+      const g = mineGroup || result.groups[0];
+      const names = g.members.map((m) => m.name).sort((a, b) => (a === "You" ? -1 : b === "You" ? 1 : 0));
+      headline = `${list(lower(names))} said the same thing.`;
+    }
+    if (mineGroup) sub.push(`<strong>+${mineGroup.members.length - 1}</strong> for you.`);
+    else sub.push("No one matched you this time.");
+    const others = result.groups.filter((g) => g !== (mineGroup || result.groups[0]));
+    if (others.length) sub.push(`${list(others.map((g) => list(g.members.map((m) => m.name))))} matched too.`);
+    return { headline, sub: sub.join(" "), mineGroup };
+  }
+
+  function showOutcome(result) {
+    const { headline, sub, mineGroup } = outcomeCopy(result);
+    const last = S.q === ROUNDS - 1;
+    const status = $("#status");
+    status.remove();
+    const acts = $("#acts");
+    acts.insertAdjacentHTML("beforebegin", `<h2 class="headline fade" id="headline">${headline}</h2><p class="sub fade" id="subline">${sub}</p>`);
+    acts.innerHTML = `
+      ${!mineGroup && !S.pending ? `<button class="link" type="button" id="meant">We meant the same thing</button>` : ""}
+      ${S.host
+        ? `<button class="btn" type="button" id="next">${last ? "See results" : "Next question"}</button>`
+        : `<p class="hint" style="color:var(--ink)">Sam will start the ${last ? "results" : "next question"}.</p>`}`;
+    requestAnimationFrame(() => document.querySelectorAll(".fade").forEach((e) => e.classList.add("in")));
+    announce(`${headline} ${sub.replace(/<[^>]+>/g, "")}`);
+    if ($("#next")) $("#next").onclick = () => { commitRound(); last ? go("end") : startRound(S.q + 1); };
+    if ($("#meant")) $("#meant").onclick = openPick;
+  }
+
+  function renderGathered() {
+    const P = K.PROMPTS[S.q];
+    const result = clustered(S.q, S.mine, S.merges);
+    app.innerHTML = `
+      <section class="screen" aria-labelledby="h">
+        <h1 class="prompt small" id="h">${esc(P.text)}</h1>
+        <div class="reveal" id="board">${groupedHTML(result)}</div>
+        <p class="sub" id="status"></p>
+        <div class="actions" id="acts"></div>
+      </section>`;
+    document.querySelectorAll(".group").forEach((g) => g.classList.add("formed"));
+    showOutcome(result);
+    if (S.pending) waitingForAgree(S.pending, true);
+  }
+
+  function commitRound() {
+    S.history[S.q] = { answers: roundAnswers(S.q, S.mine), merges: [...S.merges] };
+  }
+
+  /* Mutual override */
+  function openPick() {
+    const result = clustered(S.q, S.mine, S.merges);
+    const others = roundAnswers(S.q, S.mine).filter((a) => a.name !== "You");
+    $("#pickList").innerHTML = others.map((a) => `<button type="button" data-n="${esc(a.name)}"><span class="t">${esc(a.text)}</span><span class="n">${esc(a.name)}</span></button>`).join("");
+    $("#pickList").querySelectorAll("button").forEach((b) => (b.onclick = () => { $("#pick").close(); waitingForAgree(b.dataset.n); }));
+    $("#pick").showModal();
+  }
+  function waitingForAgree(name, staticOnly) {
+    S.pending = name;
+    $("#meant")?.remove();
+    const sub = $("#subline");
+    sub.innerHTML = `<span class="spinner" aria-hidden="true"></span>Waiting for ${esc(name)} to agree.`;
+    announce(`Waiting for ${name} to agree.`);
+    if (staticOnly) return;
+    later(1400, () => {
+      S.merges.push([name, "You"]); // you join their group; an existing group keeps its color
+      S.pending = null;
+      const result = clustered(S.q, S.mine, S.merges);
+      $("#headline")?.remove(); sub.remove();
+      $("#acts").insertAdjacentHTML("beforebegin", `<p class="sub" id="status"></p>`);
+      gather($("#board"), result, false);
+      later(reduce() ? 0 : 700, () => {
+        showOutcome(result);
+        const s = $("#subline");
+        s.innerHTML = `${esc(name)} agreed. ` + s.innerHTML;
+      });
+    });
+  }
+
+  /* End */
+  function end() {
+    const rounds = allRounds();
+    const everyone = ["You", ...bots()];
+    const pairs = K.pairTally(rounds);
+    const top = pairs[0];
+    const mineTop = pairs.find((p) => p.a === "You" || p.b === "You");
+    let headline, sub, you = "";
+    if (!top) { headline = "Nobody matched this game."; sub = "Six new questions might change that."; }
+    else {
+      const names = [top.a, top.b].sort((a, b) => (a === "You" ? -1 : b === "You" ? 1 : 0));
+      headline = `${list(lower(names))} are kindred.`;
+      sub = `The same answer ${top.count} of ${ROUNDS} times.`;
+      if (mineTop && mineTop !== top) you = `You thought most like ${mineTop.a === "You" ? mineTop.b : mineTop.a}: ${mineTop.count} of ${ROUNDS}.`;
+      if (!mineTop) you = "No one matched you this game. A true original.";
+    }
+    const scores = everyone.map((n) => ({ n, s: scoreOf(n, rounds) })).sort((a, b) => b.s - a.s);
+    const grid = rounds.map((r) => everyone.map((n) => {
+      const gi = r.groups.findIndex((g) => g.members.some((m) => m.name === n));
+      return gi;
+    }));
+    app.innerHTML = `
+      <section class="screen" aria-labelledby="h">
+        <h1 class="headline" id="h" style="margin-top:8vh;font-size:clamp(32px,8vw,44px)">${headline}</h1>
+        <p class="sub">${sub}</p>
+        ${you ? `<p class="sub" style="color:var(--ink);margin-top:10px">${you}</p>` : ""}
+        <div class="grid-preview" role="img" aria-label="Your game, one row per question, one square per person, colored when they matched someone.">
+          ${grid.map((row) => `<div class="row">${row.map((gi) => `<span class="sq" style="${gi >= 0 ? `background:var(${COLORS[gi % COLORS.length]})` : ""}"></span>`).join("")}</div>`).join("")}
+        </div>
+        <p class="section-title">Matches</p>
+        <ul class="score">${scores.map(({ n, s }) => `<li><span>${n === "You" ? "You" : esc(n)}</span><span class="count">${s} ${s === 1 ? "match" : "matches"}</span></li>`).join("")}</ul>
+        <div class="actions row">
+          <button class="btn secondary" type="button" id="share">Share results</button>
+          ${S.host ? `<button class="btn" type="button" id="again">Play again</button>` : `<p class="hint" style="color:var(--ink)">Sam can start a new game.</p>`}
+        </div>
+      </section>`;
+    $("#share").onclick = async () => {
+      const text = ["Kindred", ...grid.map((row) => row.map((gi) => (gi >= 0 ? EMOJI[gi % EMOJI.length] : "\u2B1C")).join("")), headline].join("\n");
+      try { await navigator.clipboard.writeText(text); toast("Results copied"); } catch { toast("Copy is unavailable here"); }
+    };
+    if ($("#again")) $("#again").onclick = () => { S.history = []; startRound(0); };
+    announce(`${headline} ${sub}`);
+  }
+
+  /* Room sheet */
+  function openRoom() {
+    const rounds = allRounds();
+    const everyone = ["You", ...bots()].slice(0, S.screen === "lobby" ? S.arrived : undefined);
+    $("#roomPeople").innerHTML = everyone.map((n) => {
+      const s = scoreOf(n, rounds);
+      const label = n === "You" ? `${S.name || "Ana"} (you)` : n;
+      return `<li><span>${esc(label)}${n === hostName() ? ` <span class="count">Host</span>` : ""}</span><span class="count">${s} ${s === 1 ? "match" : "matches"}</span></li>`;
+    }).join("");
+    $("#roomHost").innerHTML = S.host
+      ? `<button class="btn secondary" type="button" id="leave">Leave room</button><button class="link" type="button" id="endAll" style="display:block;margin:6px auto 0">End game for everyone</button>`
+      : `<button class="btn secondary" type="button" id="leave">Leave room</button>`;
+    $("#leave").onclick = () => { $("#room").close(); S.history = []; go("home"); };
+    if ($("#endAll")) $("#endAll").onclick = (e) => {
+      const b = e.currentTarget;
+      if (b.dataset.armed) { $("#room").close(); S.history = []; go("home"); return; }
+      b.dataset.armed = "1"; b.textContent = "Tap again to end the game for everyone";
+    };
+    $("#room").showModal();
+  }
+  $("#roomBtn").onclick = openRoom;
+  document.querySelectorAll("[data-close]").forEach((b) => (b.onclick = () => b.closest("dialog").close()));
+  function bindCopy() {
+    document.querySelectorAll("[data-copy-link]").forEach((b) => (b.onclick = async () => {
+      try { await navigator.clipboard.writeText(`${location.origin}${location.pathname}?room=KDRD`); toast("Invite link copied"); } catch { toast("Copy is unavailable here"); }
+    }));
+  }
+  bindCopy();
+
+  /* Deep links for review: ?state=... (see prototypes/index.html) */
+  function seedHistory(upTo) {
+    S.history = [];
+    for (let q = 0; q < upTo; q++) S.history[q] = { answers: roundAnswers(q, params.get(`me${q}`) || DEFAULT_ME[q]), merges: [] };
+  }
+  function deepLink() {
+    const st = params.get("state");
+    if (!st) return render();
+    const q = Math.max(0, Math.min(ROUNDS - 1, Number(params.get("q") || 0)));
+    const me = params.get("me") || DEFAULT_ME[q];
+    S.name = S.name || "Ana";
+    if (params.get("offline") === "1") $("#banner").hidden = false;
+    const roundState = (phase, extra = {}) => {
+      seedHistory(q);
+      Object.assign(S, { screen: "round", q, phase, mine: me, answered: new Set(), merges: [], pending: null, palette: new Map() }, extra);
+      render();
+    };
+    switch (st) {
+      case "home": case "name": case "join": return go(st);
+      case "lobby": return go("lobby", { arrived: Number(params.get("arrived") || S.players) });
+      case "question": {
+        roundState("answering", { mine: params.get("typed") || "" });
+        const n = Number(params.get("answered") || 2);
+        bots().slice(0, n).forEach((b) => S.answered.add(b));
+        return updateAnsweredLine();
+      }
+      case "waiting": {
+        roundState("waiting");
+        bots().slice(0, Number(params.get("answered") || 2)).forEach((b) => S.answered.add(b));
+        return renderWaiting();
+      }
+      case "checking": roundState("checking"); bots().forEach((b) => S.answered.add(b)); return renderWaiting();
+      case "slow": roundState("slow"); bots().forEach((b) => S.answered.add(b)); return renderWaiting();
+      case "reveal":
+        if (params.get("anim") === "1") { roundState("checking"); bots().forEach((b) => S.answered.add(b)); renderWaiting(); return later(700, flipAll); }
+        return roundState("gathered");
+      case "override": return roundState("gathered", { pending: params.get("with") || "Sam" });
+      case "agreed": return roundState("gathered", { merges: [[params.get("with") || "Sam", "You"]] });
+      case "room": roundState("gathered"); return openRoom();
+      case "pick": roundState("gathered"); return openPick();
+      case "end": seedHistory(ROUNDS); return go("end");
+      default: return render();
+    }
+  }
+  deepLink();
+})();
+</script>
+</body>
+</html>

@@ -9,19 +9,10 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 import { PROMPT_DECK, promptById } from "./prompts";
-import {
-  HIVE_MIND_TWO_PLAYER_ROUNDS,
-  applyMutualOverrides,
-  hiveMindRoundScores,
-  playersShareCluster,
-  soulmatePairs,
-  soulmateRoundScores,
-  twoPlayerSessionRecord,
-  validateAnswer,
-} from "./rules";
+import { pairStandings, topPairs, validateAnswer } from "./rules";
 import { MAX_JEV_ATTEMPTS } from "./jev";
 
-const PARTY_ROUNDS = 5;
+const PARTY_ROUNDS = 6;
 const MAX_PLAYERS = 12;
 /**
  * Deterministic server-owned shuffle seeded by the match id.
@@ -51,7 +42,6 @@ export const start = mutation({
   args: {
     roomId: v.id("rooms"),
     guestToken: v.string(),
-    mode: v.union(v.literal("hive-mind"), v.literal("soulmate")),
   },
   returns: v.id("matches"),
   handler: async (ctx, args) => {
@@ -71,24 +61,10 @@ export const start = mutation({
       .query("matchParticipants")
       .withIndex("by_match", (q) => q.eq("matchId", match.id))
       .collect();
-    participants.sort((a, b) => a.seatIndex - b.seatIndex);
-    const twoPlayer = participants.length === 2;
-    const roundCount =
-      twoPlayer && args.mode === "hive-mind"
-        ? HIVE_MIND_TWO_PLAYER_ROUNDS
-        : PARTY_ROUNDS;
-    const promptIds = shuffledPrompts(match.id, roundCount);
-    const pairs =
-      args.mode === "soulmate"
-        ? soulmatePairs(
-            participants.map((participant) => participant.playerId),
-          ).map(([a, b]) => ({ a, b }))
-        : undefined;
+    const promptIds = shuffledPrompts(match.id, PARTY_ROUNDS + 1);
     const gameId = await ctx.db.insert("games", {
       matchId: match.id,
-      mode: args.mode,
       promptIds,
-      ...(pairs !== undefined ? { pairs } : {}),
     });
     const roundId = await ctx.db.insert("rounds", {
       gameId,
@@ -97,6 +73,7 @@ export const start = mutation({
       promptId: promptIds[0]!,
       status: "answering",
       attempts: 0,
+      tiebreak: false,
     });
     const eventTasks = [
       ctx.scheduler.runAfter(0, internal.productEvents.emit, {
@@ -106,8 +83,7 @@ export const start = mutation({
         sessionId: match.id,
         props: {
           room_players: participants.length,
-          round_count: promptIds.length,
-          game_mode: args.mode,
+          round_count: PARTY_ROUNDS,
         },
       }),
       ctx.scheduler.runAfter(0, internal.productEvents.emit, {
@@ -130,7 +106,6 @@ export const start = mutation({
           sessionId: match.id,
           props: {
             previous_result: previousMatch.status,
-            game_mode: args.mode,
           },
         }),
       );
@@ -216,164 +191,6 @@ export const submitAnswer = mutation({
   },
 });
 
-/** Any participant can move an anonymous reveal to the names phase. */
-export const revealNames = mutation({
-  args: {
-    roomId: v.id("rooms"),
-    matchId: v.id("matches"),
-    roundId: v.id("rounds"),
-    guestToken: v.string(),
-  },
-  returns: v.null(),
-  handler: async (ctx, args): Promise<null> => {
-    const actor = await resolvePlayer(ctx, args.guestToken);
-    await requireActiveMatch(ctx, args.matchId, args.roomId);
-    const participant = await ctx.db
-      .query("matchParticipants")
-      .withIndex("by_match_player", (q) =>
-        q.eq("matchId", args.matchId).eq("playerId", actor.playerId),
-      )
-      .unique();
-    if (!participant) {
-      throw new ConvexError({ code: "MATCH_PARTICIPANT_REQUIRED" });
-    }
-    const round = await ctx.db.get(args.roundId);
-    if (!round || round.matchId !== args.matchId) {
-      throw new ConvexError({ code: "ROUND_NOT_FOUND" });
-    }
-    if (round.status !== "revealed") {
-      throw new ConvexError({ code: "ROUND_NOT_REVEALED" });
-    }
-    await ctx.db.patch(round._id, { status: "names" });
-    return null;
-  },
-});
-
-/**
- * Mutual shared-memory override: both players must consent. When the second
- * consent lands, the stored clusters merge and scores recompute
- * deterministically. Consents are retained as versioned evidence.
- */
-export const claimSharedMemory = mutation({
-  args: {
-    roomId: v.id("rooms"),
-    matchId: v.id("matches"),
-    roundId: v.id("rounds"),
-    guestToken: v.string(),
-    withPlayerId: v.id("players"),
-  },
-  returns: v.null(),
-  handler: async (ctx, args): Promise<null> => {
-    const actor = await resolvePlayer(ctx, args.guestToken);
-    await requireActiveMatch(ctx, args.matchId, args.roomId);
-    const participant = await ctx.db
-      .query("matchParticipants")
-      .withIndex("by_match_player", (q) =>
-        q.eq("matchId", args.matchId).eq("playerId", actor.playerId),
-      )
-      .unique();
-    if (!participant) {
-      throw new ConvexError({ code: "MATCH_PARTICIPANT_REQUIRED" });
-    }
-    const round = await ctx.db.get(args.roundId);
-    if (!round || round.matchId !== args.matchId) {
-      throw new ConvexError({ code: "ROUND_NOT_FOUND" });
-    }
-    if (round.status !== "names") {
-      throw new ConvexError({ code: "OVERRIDE_WINDOW_CLOSED" });
-    }
-    const result = await ctx.db
-      .query("roundResults")
-      .withIndex("by_round", (q) => q.eq("roundId", round._id))
-      .unique();
-    if (!result) {
-      throw new ConvexError({ code: "GAME_NOT_FOUND" });
-    }
-    const sortedPair = [actor.playerId, args.withPlayerId].sort();
-    const first = sortedPair[0]!;
-    const second = sortedPair[1]!;
-    if (first === second) {
-      throw new ConvexError({ code: "OVERRIDE_INVALID_PAIR" });
-    }
-    // Convex document ids never contain spaces, so this pair key is
-    // order-independent and collision-free.
-    const pairKey = `${first} ${second}`;
-    const priorConsent = await ctx.db
-      .query("overrideConsents")
-      .withIndex("by_round_player", (q) =>
-        q.eq("roundId", round._id).eq("playerId", actor.playerId),
-      )
-      .unique();
-    if (!priorConsent || priorConsent.pairKey !== pairKey) {
-      if (!priorConsent) {
-        await ctx.db.insert("overrideConsents", {
-          roundId: round._id,
-          pairKey,
-          playerId: actor.playerId,
-        });
-      }
-    }
-    const consents = await ctx.db
-      .query("overrideConsents")
-      .withIndex("by_round_pair", (q) =>
-        q.eq("roundId", round._id).eq("pairKey", pairKey),
-      )
-      .collect();
-    const distinctPlayers = new Set(
-      consents.map((consent) => consent.playerId),
-    );
-    if (distinctPlayers.size < 2) {
-      return null; // Waiting for the other player's consent.
-    }
-    const alreadyApplied = result.overrides.some(
-      (override) =>
-        (override.playerA === first && override.playerB === second) ||
-        (override.playerA === second && override.playerB === first),
-    );
-    if (alreadyApplied) {
-      return null;
-    }
-    const merged = applyMutualOverrides(
-      { clusters: result.clusters, verdicts: {}, unresolvedPairs: [] },
-      [{ playerA: first, playerB: second }],
-    );
-    const game = await ctx.db.get(round.gameId);
-    if (!game) {
-      throw new ConvexError({ code: "GAME_NOT_FOUND" });
-    }
-    const participants = await ctx.db
-      .query("matchParticipants")
-      .withIndex("by_match", (q) => q.eq("matchId", args.matchId))
-      .collect();
-    const scoreMap =
-      game.mode === "soulmate" && game.pairs
-        ? soulmateRoundScores(
-            merged.clusters,
-            game.pairs.map((pair) => [pair.a, pair.b] as const),
-          )
-        : hiveMindRoundScores(
-            merged.clusters,
-            participants.map((participant) => participant.playerId),
-          );
-    await ctx.db.patch(result._id, {
-      clusters: merged.clusters.map((cluster) => ({
-        anchor: cluster.anchor,
-        answers: cluster.answers.map((answer) => ({
-          playerId: answer.playerId as Id<"players">,
-          text: answer.text,
-          normalized: answer.normalized,
-        })),
-      })),
-      scores: [...scoreMap].map(([playerId, points]) => ({
-        playerId: playerId as Id<"players">,
-        points,
-      })),
-      overrides: [...result.overrides, { playerA: first, playerB: second }],
-    });
-    return null;
-  },
-});
-
 /** Host advances to the next round, or finalizes and completes the match. */
 export const advance = mutation({
   args: {
@@ -401,17 +218,18 @@ export const advance = mutation({
       .withIndex("by_game_index", (q) => q.eq("gameId", game._id))
       .order("desc")
       .first();
-    if (!round || round.status !== "names") {
+    if (!round || round.status !== "revealed") {
       throw new ConvexError({ code: "ROUND_NOT_READY_TO_ADVANCE" });
     }
     const nextIndex = round.index + 1;
-    if (nextIndex < game.promptIds.length) {
+    if (nextIndex < PARTY_ROUNDS) {
       const nextRoundId = await ctx.db.insert("rounds", {
         gameId: game._id,
         matchId: args.matchId,
         index: nextIndex,
         promptId: game.promptIds[nextIndex]!,
         status: "answering",
+        tiebreak: false,
         attempts: 0,
       });
       await ctx.scheduler.runAfter(0, internal.productEvents.emit, {
@@ -426,58 +244,58 @@ export const advance = mutation({
       });
       return null;
     }
-    // Final round: compute the final record, then complete the match.
     const rounds = await ctx.db
       .query("rounds")
       .withIndex("by_game_index", (q) => q.eq("gameId", game._id))
       .collect();
     rounds.sort((a, b) => a.index - b.index);
-    const results = [];
-    for (const row of rounds) {
-      const result = await ctx.db
-        .query("roundResults")
-        .withIndex("by_round", (q) => q.eq("roundId", row._id))
-        .unique();
-      if (result) {
-        results.push(result);
-      }
-    }
-    const participants = await ctx.db
-      .query("matchParticipants")
-      .withIndex("by_match", (q) => q.eq("matchId", args.matchId))
-      .collect();
-    if (game.mode === "hive-mind" && participants.length === 2) {
-      // Session record, not a compatibility score.
-      const [a, b] = [participants[0]!.playerId, participants[1]!.playerId];
-      const record = twoPlayerSessionRecord(
-        results.map((result) => ({
-          matched: playersShareCluster(result.clusters, a, b),
-        })),
-      );
-      await ctx.db.patch(game._id, { sessionRecord: record });
-    } else {
-      const totals = new Map<Id<"players">, number>();
-      for (const result of results) {
-        for (const score of result.scores) {
-          totals.set(
-            score.playerId,
-            (totals.get(score.playerId) ?? 0) + score.points,
-          );
-        }
-      }
-      await ctx.db.patch(game._id, {
-        totals: [...totals]
-          .map(([playerId, points]) => ({ playerId, points }))
-          .sort((x, y) => y.points - x.points),
-      });
-    }
-    await completeMatch(ctx, { matchId: args.matchId, actor });
-    const totalScore = results.reduce(
-      (sum, result) =>
-        sum +
-        result.scores.reduce((roundSum, score) => roundSum + score.points, 0),
-      0,
+    const results = await Promise.all(
+      rounds.map((row) =>
+        ctx.db
+          .query("roundResults")
+          .withIndex("by_round", (q) => q.eq("roundId", row._id))
+          .unique(),
+      ),
     );
+    const revealed = results.filter((result) => result !== null);
+    const standings = pairStandings(revealed);
+    const leaders = topPairs(standings).map((pair) => ({
+      a: pair.a as Id<"players">,
+      b: pair.b as Id<"players">,
+    }));
+    if (nextIndex === PARTY_ROUNDS && leaders.length > 1) {
+      // US-006: exactly one extra question, restricted to the tied leaders.
+      await ctx.db.patch(game._id, { tiedPairs: leaders });
+      const promptId = game.promptIds[PARTY_ROUNDS]!;
+      const nextRoundId = await ctx.db.insert("rounds", {
+        gameId: game._id,
+        matchId: args.matchId,
+        index: PARTY_ROUNDS,
+        promptId,
+        tiebreak: true,
+        status: "answering",
+        attempts: 0,
+      });
+      await ctx.scheduler.runAfter(0, internal.productEvents.emit, {
+        eventId: `${nextRoundId}:start`,
+        eventName: "round_start",
+        occurredAt: Date.now(),
+        sessionId: args.matchId,
+        props: { round_index: PARTY_ROUNDS, prompt_id: promptId },
+      });
+      return null;
+    }
+    const winners = leaders;
+    const result = {
+      winners,
+      shared: winners.length > 1,
+      decidedBy: (round.tiebreak ? "extra" : "questions") as
+        "extra" | "questions",
+      total: standings[0]?.total ?? 0,
+    };
+    await ctx.db.patch(game._id, { result });
+    await completeMatch(ctx, { matchId: args.matchId, actor });
+    const totalScore = standings.reduce((sum, pair) => sum + pair.total, 0);
     await ctx.scheduler.runAfter(0, internal.productEvents.emit, {
       eventId: `${args.matchId}:complete`,
       eventName: "match_complete",
@@ -523,11 +341,7 @@ export const retryJudgment = mutation({
   },
 });
 
-/**
- * Viewer-safe projection. Before a reveal, no other player's answer text,
- * clusters, or scores are ever sent. Anonymous clusters carry texts only;
- * names attach only in the names phase.
- */
+/** US-003: before reveal, only the viewer's text crosses this boundary. */
 export const view = query({
   args: { roomId: v.id("rooms"), guestToken: v.string() },
   handler: async (ctx, args) => {
@@ -549,7 +363,6 @@ export const view = query({
       .query("roomMembers")
       .withIndex("by_room_player", (q) => q.eq("roomId", args.roomId))
       .collect();
-    const namesById = new Map(members.map((m) => [m.playerId, m.displayName]));
     const base = {
       viewerPlayerId: actor.playerId,
       room: {
@@ -599,103 +412,110 @@ export const view = query({
         match: { id: match._id, status: match.status, spectator: true },
       };
     }
-    const round = await ctx.db
+    participants.sort((a, b) => a.seatIndex - b.seatIndex);
+    const rounds = await ctx.db
       .query("rounds")
       .withIndex("by_game_index", (q) => q.eq("gameId", game._id))
-      .order("desc")
-      .first();
-    if (!round) {
-      return {
-        ...base,
-        match: { id: match._id, status: match.status, mode: game.mode },
-      };
-    }
-    const prompt = promptById.get(round.promptId);
-    const myAnswer = await ctx.db
-      .query("answers")
-      .withIndex("by_round_player", (q) =>
-        q.eq("roundId", round._id).eq("playerId", actor.playerId),
-      )
-      .unique();
-    const answerCount = (
-      await ctx.db
-        .query("answers")
-        .withIndex("by_round", (q) => q.eq("roundId", round._id))
-        .collect()
-    ).length;
-    const result =
-      round.status === "revealed" || round.status === "names"
-        ? await ctx.db
+      .collect();
+    rounds.sort((a, b) => a.index - b.index);
+    const round = rounds.at(-1) ?? null;
+    const revealedResults = await Promise.all(
+      rounds
+        .filter((row) => row.status === "revealed")
+        .map((row) =>
+          ctx.db
             .query("roundResults")
-            .withIndex("by_round", (q) => q.eq("roundId", round._id))
-            .unique()
+            .withIndex("by_round", (q) => q.eq("roundId", row._id))
+            .unique(),
+        ),
+    );
+    const scoredRounds = revealedResults.filter((result) => result !== null);
+    const standings = pairStandings(scoredRounds).map((standing) => ({
+      a: standing.a as Id<"players">,
+      b: standing.b as Id<"players">,
+      total: standing.total,
+      delta: standing.delta,
+    }));
+    const answers = round
+      ? await ctx.db
+          .query("answers")
+          .withIndex("by_round", (q) => q.eq("roundId", round._id))
+          .collect()
+      : [];
+    const latestResult =
+      round?.status === "revealed" && scoredRounds.at(-1)?.roundId === round._id
+        ? scoredRounds.at(-1)
         : null;
-    const revealed = round.status === "revealed" || round.status === "names";
-    const namesOut = round.status === "names";
-    const projected = result
-      ? {
-          clusters: result.clusters.map((cluster) => ({
-            anchor: cluster.anchor,
-            answers: namesOut
-              ? cluster.answers.map((answer) => ({
-                  name: namesById.get(answer.playerId) ?? "Player",
-                  text: answer.text,
-                }))
-              : cluster.answers.map((answer) => ({
-                  name: null,
-                  text: answer.text,
-                })),
-          })),
-          scores: namesOut
-            ? result.scores.map((score) => ({
-                name: namesById.get(score.playerId) ?? "Player",
-                points: score.points,
-              }))
-            : null,
-          overrides: result.overrides.map((override) => ({
-            playerA: override.playerA,
-            playerB: override.playerB,
-          })),
-        }
-      : null;
+    const scoring = new Set(
+      latestResult?.pairs
+        .filter((pair) => pair.scored)
+        .map((pair) => `${pair.a}\u0000${pair.b}`) ?? [],
+    );
+    const groups =
+      latestResult?.clusters
+        .map((cluster) => {
+          const kind =
+            cluster.answers.length === 1
+              ? ("single" as const)
+              : cluster.answers.length === 2
+                ? ("pair" as const)
+                : ("crowd" as const);
+          const [first, second] = cluster.answers;
+          const key =
+            kind === "pair"
+              ? [first!.playerId, second!.playerId].sort().join("\u0000")
+              : "";
+          return {
+            kind,
+            scored: kind === "pair" && scoring.has(key),
+            answers: cluster.answers.map((answer) => ({
+              playerId: answer.playerId,
+              text: answer.text,
+            })),
+          };
+        })
+        .sort((a, b) => {
+          const rank = (group: {
+            kind: "single" | "pair" | "crowd";
+            scored: boolean;
+          }) =>
+            group.kind === "pair"
+              ? group.scored
+                ? 0
+                : 1
+              : group.kind === "crowd"
+                ? 2
+                : 3;
+          return (
+            rank(a) - rank(b) ||
+            (a.kind === "crowd" ? b.answers.length - a.answers.length : 0)
+          );
+        }) ?? null;
     return {
       ...base,
       match: {
         id: match._id,
         status: match.status,
-        mode: game.mode,
-        roundCount: game.promptIds.length,
-        pairs:
-          game.pairs && namesOut
-            ? game.pairs.map((pair) => ({
-                a: namesById.get(pair.a) ?? "Player",
-                b: namesById.get(pair.b) ?? "Player",
-              }))
-            : null,
-        round: {
-          id: round._id,
-          index: round.index,
-          status: round.status,
-          attempts: round.attempts,
-          prompt: prompt?.text ?? "",
-          category: prompt?.category ?? "ordinary",
-          myAnswer: myAnswer ? myAnswer.text : null,
-          answerCount,
-          participantCount: participants.length,
-          houseAnswers:
-            game.mode === "soulmate" && participants.length === 2 && revealed
-              ? (prompt?.houseAnswers ?? [])
-              : null,
-        },
-        reveal: projected,
-        sessionRecord: game.sessionRecord ?? null,
-        totals: game.totals
-          ? game.totals.map((total) => ({
-              playerId: total.playerId,
-              name: namesById.get(total.playerId) ?? "Player",
-              points: total.points,
-            }))
+        roundCount: PARTY_ROUNDS as 6,
+        participantIds: participants.map((participant) => participant.playerId),
+        round: round
+          ? {
+              id: round._id,
+              index: round.index,
+              tiebreak: round.tiebreak,
+              status: round.status,
+              attempts: round.attempts,
+              prompt: promptById.get(round.promptId)?.text ?? "",
+              myAnswer:
+                answers.find((answer) => answer.playerId === actor.playerId)
+                  ?.text ?? null,
+              answeredPlayerIds: answers.map((answer) => answer.playerId),
+            }
           : null,
+        reveal: groups === null ? null : { groups },
+        standings,
+        tiedPairs: game.tiedPairs ?? null,
+        result: game.result ?? null,
       },
     };
   },

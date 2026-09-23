@@ -1,344 +1,415 @@
-import { chromium, expect } from "@playwright/test";
+/**
+ * Real-path playthrough for the pair rule (USER_STORIES.md US-001..US-009).
+ * Runs against a live app + Convex backend with the real Jev judge; no fixtures.
+ * Answers are chosen so the judge must decide synonyms (sofa/couch, TV/television,
+ * car/automobile, whisky/whiskey, kid/child) and distinct pairs (coffee/tea).
+ *
+ * Env: KINDRED_QA_URL (default http://127.0.0.1:3000), KINDRED_QA_OUTPUT (screenshots dir),
+ *      KINDRED_QA_RECEIPT (receipt path). Screenshots never belong in the repository.
+ * Every captured state is also scanned with axe-core (pinned CDN build).
+ */
+import { chromium } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 
-const baseUrl = "http://localhost:3000";
-const outputDir = process.env["KINDRED_QA_OUTPUT"] ?? `${process.env.HOME}/kindred-qa-runtime/screenshots`;
+const baseUrl = process.env["KINDRED_QA_URL"] ?? "http://127.0.0.1:3000";
+const outputDir =
+  process.env["KINDRED_QA_OUTPUT"] ?? `${process.env.HOME}/kindred-qa/shots`;
 const receiptPath =
-  process.env["KINDRED_QA_RECEIPT"] ?? `${process.env.HOME}/kindred-qa-runtime/gameplay-receipt.json`;
+  process.env["KINDRED_QA_RECEIPT"] ??
+  `${process.env.HOME}/kindred-qa/receipt.json`;
 await mkdir(outputDir, { recursive: true });
 
+const NAMES = ["Ana", "Ben", "Cleo", "Dev", "Eli"];
 const receipt = {
-  schemaVersion: 1,
-  target: "remote production build",
+  schemaVersion: 2,
   baseUrl,
-  fixture: {
-    label: "FIXTURE ONLY: local identical-answer judge",
-    model: "fixture/identical-answer-judge",
-    productionOutcome: false,
-  },
-  players: [
-    { context: "player-a", displayName: "Alice QA" },
-    { context: "player-b", displayName: "Bob QA" },
-  ],
+  judge: "live Jev",
   checks: {},
-  steps: [],
-  screenshots: [],
+  rounds: [],
+  shots: [],
   browserErrors: [],
 };
-
-function shotPath(name) {
-  receipt.screenshots.push(name);
-  return `${outputDir}/${name}`;
-}
-
-async function step(name, operation) {
-  const startedAt = new Date().toISOString();
-  try {
-    const value = await operation();
-    receipt.steps.push({ name, status: "passed", startedAt, finishedAt: new Date().toISOString() });
-    return value;
-  } catch (error) {
-    receipt.steps.push({
-      name,
-      status: "failed",
-      startedAt,
-      finishedAt: new Date().toISOString(),
-      error: error instanceof Error ? error.message : String(error),
-    });
-    throw error;
-  }
-}
-
-async function waitForStableLayout(page) {
-  let previous = "";
-  let stableSamples = 0;
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    const sample = await page.evaluate(
-      () => `${document.documentElement.scrollWidth}x${document.documentElement.scrollHeight}`,
-    );
-    stableSamples = sample === previous ? stableSamples + 1 : 0;
-    if (stableSamples >= 2) return;
-    previous = sample;
-    await page.waitForTimeout(100);
-  }
-  throw new Error("layout did not settle before capture");
-}
-
-async function ready(page) {
-  await page.goto(baseUrl, { waitUntil: "networkidle" });
-  await expect(page.getByLabel("What should we call you?")).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByText("Making space for you…")).toBeHidden({ timeout: 20_000 });
-  await expect(page.locator(".inline-notice")).toHaveCount(0, { timeout: 20_000 });
-  await page.evaluate(() => document.fonts.ready);
-  await waitForStableLayout(page);
-}
-
-async function assertPanelsNotScrolled(page) {
-  const scrolled = await page.locator(".panel").evaluateAll((panels) =>
-    panels
-      .map((panel, index) => ({ index, scrollLeft: panel.scrollLeft }))
-      .filter(({ scrollLeft }) => scrollLeft !== 0),
-  );
-  if (scrolled.length > 0) {
-    throw new Error(`panel content clipped by internal scrolling: ${JSON.stringify(scrolled)}`);
-  }
-}
-
-async function enterName(page, name) {
-  const field = page.getByLabel("What should we call you?");
-  await field.fill(name);
-}
-
-async function playRound({ host, other, index, total, captureAnonymous, captureNamed }) {
-  const roundText = new RegExp(`Round ${index + 1} of ${total}`);
-  await expect(host.getByText(roundText)).toBeVisible({ timeout: 20_000 });
-  await expect(other.getByText(roundText)).toBeVisible({ timeout: 20_000 });
-
-  await host.getByLabel("Your secret answer").fill(`Moon ${index + 1}`);
-  await host.getByRole("button", { name: "Lock it in" }).click();
-  await other.getByLabel("Your secret answer").fill(`Luna ${index + 1}`);
-  await other.getByRole("button", { name: "Lock it in" }).click();
-
-  await expect(host.getByText("Answers first")).toBeVisible({ timeout: 20_000 });
-  if (captureAnonymous) {
-    await host.screenshot({ path: shotPath("05-desktop-anonymous-reveal.png"), fullPage: true });
-  }
-  await host.getByRole("button", { name: "See who thought it" }).click();
-  await expect(other.getByText("The lights come on")).toBeVisible({ timeout: 20_000 });
-  if (captureNamed) {
-    await other.screenshot({ path: shotPath("06-mobile-named-reveal.png"), fullPage: true });
-  }
-
-  const buttonName = index + 1 < total ? "Next round" : "Finish and see the record";
-  await host.getByRole("button", { name: buttonName }).click();
-  if (index + 1 < total) {
-    await expect(host.getByText(new RegExp(`Round ${index + 2} of ${total}`))).toBeVisible({
-      timeout: 20_000,
-    });
-  } else {
-    await expect(host.getByText("Match finished")).toBeVisible({ timeout: 20_000 });
-    await expect(other.getByText("Match finished")).toBeVisible({ timeout: 20_000 });
-  }
-}
+const phone = { width: 390, height: 844 };
+const desktop = { width: 1280, height: 800 };
 
 const browser = await chromium.launch({ headless: true });
-try {
-  await step("capture desktop lobby", async () => {
-    const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
-    const page = await context.newPage();
-    await ready(page);
-    await page.screenshot({ path: shotPath("01-desktop-lobby.png"), fullPage: true });
-    await context.close();
-  });
+const players = [];
+const axeSource = await (
+  await fetch("https://cdn.jsdelivr.net/npm/axe-core@4.10.2/axe.min.js")
+).text();
 
-  await step("capture mobile lobby", async () => {
-    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true });
-    const page = await context.newPage();
-    await ready(page);
-    const mobileWidth = await page.evaluate(() => ({
-      viewport: window.innerWidth,
-      document: document.documentElement.scrollWidth,
-    }));
-    if (mobileWidth.document !== mobileWidth.viewport) {
-      throw new Error(`mobile horizontal overflow: ${JSON.stringify(mobileWidth)}`);
-    }
-    await page.screenshot({ path: shotPath("02-mobile-lobby.png"), fullPage: true });
-    await context.close();
-  });
+function check(name, ok, detail) {
+  receipt.checks[name] = ok ? "pass" : `FAIL: ${detail ?? ""}`;
+  if (!ok) throw new Error(`check failed: ${name} ${detail ?? ""}`);
+}
 
-  await step("capture loading state", async () => {
-    const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
-    const page = await context.newPage();
-    let release;
-    const gate = new Promise((resolve) => {
-      release = resolve;
+async function shot(page, name, fullPage = true) {
+  await page.waitForTimeout(250);
+  const path = `${outputDir}/${name}.png`;
+  await page.screenshot({ path, fullPage });
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > window.innerWidth + 1,
+  );
+  const violations = await page.evaluate(async (source) => {
+    if (!("axe" in window)) new Function(source)();
+    const result = await window.axe.run(document, {
+      resultTypes: ["violations"],
     });
-    await page.route("**/api/guest", async (route) => {
-      await gate;
-      await route.abort();
-    });
-    await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
-    await expect(page.getByText("Making space for you…")).toBeVisible();
-    await waitForStableLayout(page);
-    await page.screenshot({ path: shotPath("03-desktop-loading.png"), fullPage: true });
-    release();
-    await context.close();
-  });
-
-  await step("capture guest issuer error", async () => {
-    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true });
-    const page = await context.newPage();
-    await page.route("**/api/guest", async (route) => {
-      await route.fulfill({
-        status: 503,
-        contentType: "application/json",
-        body: JSON.stringify({ code: "GUEST_ISSUER_UNAVAILABLE" }),
-      });
-    });
-    await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
-    await expect(page.getByText("We lost the connection.")).toBeVisible({ timeout: 10_000 });
-    await page.evaluate(() => document.fonts.ready);
-    await waitForStableLayout(page);
-    await page.screenshot({ path: shotPath("04-mobile-error.png"), fullPage: true });
-    await context.close();
-  });
-
-  await step("capture icon optical sizes", async () => {
-    const context = await browser.newContext({ viewport: { width: 1200, height: 600 } });
-    const page = await context.newPage();
-    await page.setContent(`<!doctype html><html><style>
-      body{margin:0;background:#07111f;color:#fff;font:16px system-ui;display:grid;place-items:center;min-height:100vh}
-      main{display:flex;align-items:end;gap:64px;padding:48px;border:1px solid #28415e;border-radius:24px;background:#0b1728}
-      figure{margin:0;text-align:center} img{display:block;margin:auto auto 18px;image-rendering:auto}
-      .tile{display:grid;place-items:center;background:#13253a;border-radius:18px;width:280px;height:320px}
-    </style><body><main>
-      <figure><div class="tile"><img src="${baseUrl}/icon.svg" width="16" height="16"></div><figcaption>16 px optical mark</figcaption></figure>
-      <figure><div class="tile"><img src="${baseUrl}/icon.svg" width="32" height="32"></div><figcaption>32 px rendered favicon</figcaption></figure>
-      <figure><div class="tile"><img src="${baseUrl}/brand/kindred-mark.svg" width="256" height="256"></div><figcaption>256 px editable mark</figcaption></figure>
-    </main></body></html>`);
-    await page.waitForFunction(() =>
-      [...document.images].every((image) => image.complete && image.naturalWidth > 0),
+    return result.violations.map(
+      (v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`,
     );
-    await page.screenshot({ path: shotPath("09-icon-optics.png") });
-    await context.close();
+  }, axeSource);
+  receipt.shots.push({
+    name,
+    viewport: page.viewportSize(),
+    overflow,
+    violations,
   });
+  if (overflow) throw new Error(`horizontal overflow in ${name}`);
+  if (violations.length)
+    throw new Error(`accessibility in ${name}: ${violations.join(" | ")}`);
+}
 
-  const playerA = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
-  const playerB = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true });
-  const alice = await playerA.newPage();
-  const bob = await playerB.newPage();
-  let expectedOffline = false;
-  for (const [label, page] of [
-    ["player-a", alice],
-    ["player-b", bob],
-  ]) {
-    page.on("pageerror", (error) => receipt.browserErrors.push({ label, type: "pageerror", message: error.message }));
-    page.on("requestfailed", (request) => {
-      if (!expectedOffline) {
-        receipt.browserErrors.push({
-          label,
-          type: "requestfailed",
-          url: new URL(request.url()).pathname,
-          message: request.failure()?.errorText ?? "unknown",
-        });
-      }
-    });
+async function newPlayer(
+  name,
+  viewport = phone,
+  reducedMotion = "no-preference",
+) {
+  const context = await browser.newContext({
+    viewport,
+    reducedMotion,
+    permissions: ["clipboard-read", "clipboard-write"],
+  });
+  const page = await context.newPage();
+  page.on("pageerror", (error) =>
+    receipt.browserErrors.push(`${name}: ${error.message}`),
+  );
+  page.on("console", (message) => {
+    if (message.type() === "error")
+      receipt.browserErrors.push(`${name}: ${message.text()}`);
+  });
+  return { name, context, page };
+}
+
+async function createRoom(player, capture) {
+  const { page } = player;
+  await page.goto(baseUrl);
+  await page.getByRole("button", { name: "Start a game" }).waitFor();
+  if (capture) await shot(page, "01-home");
+  await page.getByRole("button", { name: "Start a game" }).click();
+  await page.locator("#display-name").fill(player.name);
+  if (capture) await shot(page, "02-name");
+  await page
+    .getByRole("button", { name: "Create room" })
+    .click({ timeout: 15_000 });
+  await page
+    .getByRole("heading", { name: "Room code" })
+    .waitFor({ timeout: 15_000 });
+  return new URL(page.url()).searchParams.get("room");
+}
+
+async function joinRoom(player, code, capture) {
+  const { page } = player;
+  await page.goto(`${baseUrl}/?room=${code}`);
+  await page.getByRole("heading", { name: "Join a game" }).waitFor();
+  await page.locator("#join-name").fill(player.name);
+  await page.getByRole("button", { name: "Join", exact: true }).waitFor();
+  if (capture) await shot(page, "04-join");
+  await page.getByRole("button", { name: "Join", exact: true }).click();
+  await page
+    .getByRole("heading", { name: "Room code" })
+    .waitFor({ timeout: 15_000 });
+}
+
+async function answer(player, text) {
+  const { page } = player;
+  await page.locator("#answer").waitFor({ timeout: 20_000 });
+  await page.locator("#answer").fill(text);
+  await page.getByRole("button", { name: "Send" }).click();
+}
+
+async function waitReveal(page) {
+  await page.locator("main h2.headline").waitFor({ timeout: 120_000 });
+  await page.waitForTimeout(700);
+}
+
+/** Plays one question: host answers first (to capture waiting), the rest follow. */
+async function playRound(
+  group,
+  answers,
+  label,
+  { captureWaiting = false } = {},
+) {
+  const host = group[0];
+  await host.page.locator("#answer").waitFor({ timeout: 20_000 });
+  const prompt = (await host.page.locator("#prompt").textContent()) ?? "";
+  await answer(host, answers[0]);
+  if (captureWaiting) {
+    await host.page.getByText(/^Waiting for /).waitFor();
+    await shot(host.page, `${label}-waiting`);
+    // US-003: nobody's device shows another player's text before the reveal.
+    const hostBody = await host.page.locator("main").innerText();
+    const leaked = answers
+      .slice(1)
+      .filter((text) => text !== answers[0] && hostBody.includes(text));
+    check(`${label} secrecy`, leaked.length === 0, leaked.join(","));
   }
-
-  let roomCode;
-  await step("two independent players create and join", async () => {
-    await ready(alice);
-    await enterName(alice, "Alice QA");
-    await alice.getByRole("button", { name: "Start a room" }).click();
-    const code = alice.locator(".room-code");
-    await expect(code).toBeVisible({ timeout: 20_000 });
-    roomCode = (await code.textContent()).trim();
-    if (!/^[A-Z0-9]{4}$/.test(roomCode)) throw new Error("room code contract failed");
-
-    await bob.goto(`${baseUrl}/?room=${roomCode}`, { waitUntil: "domcontentloaded" });
-    await enterName(bob, "Bob QA");
-    await expect(bob.getByRole("button", { name: "Join room" })).toBeEnabled({ timeout: 20_000 });
-    await bob.getByRole("button", { name: "Join room" }).click();
-    await expect(bob.getByRole("heading", { name: `Room ${roomCode}` })).toBeVisible({
-      timeout: 20_000,
-    });
-    await expect(alice.getByText("Bob QA")).toBeVisible({ timeout: 20_000 });
-    receipt.checks.independentPlayers = true;
+  for (let i = 1; i < group.length; i += 1) await answer(group[i], answers[i]);
+  await Promise.all(group.map((player) => waitReveal(player.page)));
+  const head = await host.page.locator("main h2.headline").innerText();
+  const subs = await host.page.locator("main .fade .sub").allInnerTexts();
+  const standings = await host.page
+    .locator(".standings li")
+    .allInnerTexts()
+    .catch(() => []);
+  const groups = await host.page.locator(".reveal .group").evaluateAll((els) =>
+    els.map((el) => ({
+      label: el.getAttribute("aria-label"),
+      answers: [...el.querySelectorAll(".t")].map((t) => t.textContent),
+    })),
+  );
+  const next = host.page.locator(".actions .btn").last();
+  const nextLabel = await next.innerText();
+  receipt.rounds.push({
+    label,
+    prompt,
+    answers,
+    head,
+    subs,
+    groups,
+    standings: standings.map((s) => s.replace(/\s+/g, " ")),
+    nextLabel,
   });
+  return { head, subs, groups, standings, nextLabel, next };
+}
 
-  await step("transport and continuity reconnect", async () => {
-    expectedOffline = true;
-    await playerB.setOffline(true);
-    await bob.waitForTimeout(1_200);
-    await playerB.setOffline(false);
-    expectedOffline = false;
-    await expect(bob.getByText("Connected", { exact: true })).toBeVisible({ timeout: 20_000 });
-    await bob.reload({ waitUntil: "domcontentloaded" });
-    await expect(bob.getByRole("button", { name: "Join room" })).toBeEnabled({ timeout: 20_000 });
-    await bob.getByRole("button", { name: "Join room" }).click();
-    const bobRoster = bob.locator(".roster li").filter({ hasText: "Bob QA (you)" });
-    await expect(bobRoster).toContainText("Seat 2", { timeout: 20_000 });
-    receipt.checks.transportReconnect = true;
-    receipt.checks.continuityReconnect = true;
-  });
+try {
+  // Game 1: five players, clean win for Ana and Ben (US-001, US-002, US-004, US-005, US-006).
+  for (const name of NAMES) players.push(await newPlayer(name));
+  const [ana, ben, cleo, dev, eli] = players;
+  const code = await createRoom(ana, true);
+  check("room code issued", /^[A-Z0-9]{4}$/.test(code ?? ""), code);
+  await shot(ana.page, "03-lobby-alone");
+  await joinRoom(ben, code, true);
+  for (const p of [cleo, dev, eli]) await joinRoom(p, code, false);
+  await ana.page.getByText("5 people here").waitFor({ timeout: 15_000 });
+  await shot(ana.page, "05-lobby-host");
+  await shot(ben.page, "06-lobby-guest");
+  const lobbyRule = await ana.page.locator(".rule-line").innerText();
+  check(
+    "lobby states the rule",
+    /exactly two of you say the same thing/.test(lobbyRule),
+    lobbyRule,
+  );
 
-  await step("complete two-player Soulmate", async () => {
-    await alice.getByRole("button", { name: "Soulmate" }).click();
-    await alice.getByRole("button", { name: "Start game" }).click();
-    for (let index = 0; index < 5; index += 1) {
-      await playRound({
-        host: alice,
-        other: bob,
-        index,
-        total: 5,
-        captureAnonymous: index === 0,
-        captureNamed: index === 0,
-      });
+  await ana.page.getByRole("button", { name: "Start game" }).click();
+  await ana.page.locator("#answer").waitFor({ timeout: 20_000 });
+  await shot(ana.page, "07-question");
+  await ana.page.getByRole("button", { name: "Room" }).click();
+  await ana.page.locator("dialog[open]").waitFor();
+  await shot(ana.page, "08-room-sheet", false);
+  await ana.page.getByRole("button", { name: "Close", exact: true }).click();
+
+  const all = [ana, ben, cleo, dev, eli];
+  let r = await playRound(
+    all,
+    ["sofa", "couch", "chair", "lamp", "table"],
+    "g1-r1",
+    { captureWaiting: true },
+  );
+  await shot(ana.page, "09-reveal-pair");
+  check(
+    "synonym pair scores (sofa/couch)",
+    r.head === "You and Ben." && r.standings.length === 1,
+    `${r.head} ${r.standings}`,
+  );
+  await shot(cleo.page, "10-reveal-single-guest");
+  await r.next.click();
+
+  r = await playRound(all, ["dog", "dog", "dog", "cat", "bird"], "g1-r2");
+  await shot(ana.page, "11-reveal-crowd");
+  check(
+    "crowd of three scores nothing",
+    r.head === "Too many." &&
+      r.groups.some((g) => /3 people, nobody scores/.test(g.label ?? "")),
+    r.head,
+  );
+  await r.next.click();
+
+  r = await playRound(
+    all,
+    ["TV", "television", "car", "automobile", "bus"],
+    "g1-r3",
+  );
+  await shot(ana.page, "12-reveal-two-pairs");
+  check(
+    "two synonym pairs in one round",
+    r.groups.filter((g) => g.label === "A pair, scores").length === 2,
+    JSON.stringify(r.groups),
+  );
+  await r.next.click();
+
+  r = await playRound(
+    all,
+    ["pizza", "apple", "apple", "banana", "grape"],
+    "g1-r4",
+  );
+  await r.next.click();
+
+  r = await playRound(
+    all,
+    ["coffee", "tea", "water", "juice", "milk"],
+    "g1-r5",
+  );
+  check(
+    "related but different answers do not pair (coffee/tea)",
+    r.groups.length === 0,
+    JSON.stringify(r.groups),
+  );
+  await shot(ana.page, "13-reveal-nobody");
+  await r.next.click();
+
+  r = await playRound(
+    all,
+    ["whisky", "whiskey", "kid", "child", "train"],
+    "g1-r6",
+  );
+  check(
+    "last question offers the result",
+    r.nextLabel === "See who won",
+    r.nextLabel,
+  );
+  await r.next.click();
+  await ana.page.locator("#end-title").waitFor({ timeout: 20_000 });
+  const endHead = await ana.page.locator("#end-title").innerText();
+  check("clean winner named", endHead === "You and Ben win.", endHead);
+  await shot(ana.page, "14-end-winner");
+  await shot(eli.page, "15-end-guest");
+  await ana.page.getByRole("button", { name: "Share results" }).click();
+  const shared = await ana.page.evaluate(() => navigator.clipboard.readText());
+  const leakedInShare = ["sofa", "couch", "whisky", "television"].filter((t) =>
+    shared.includes(t),
+  );
+  check(
+    "share names everyone and has no answer text",
+    leakedInShare.length === 0 &&
+      shared.startsWith("Kindred\nAna and Ben win.") &&
+      !shared.includes("You"),
+    shared,
+  );
+
+  // Game 2: same room, tie after six, one extra question (US-006).
+  await ana.page.getByRole("button", { name: "Play again" }).click();
+  const tiePlan = [
+    ["sofa", "couch", "red", "blue", "green"],
+    ["hat", "shoe", "car", "automobile", "sock"],
+    ["TV", "television", "kid", "child", "bus"],
+    ["one", "two", "three", "four", "five"],
+    ["north", "south", "east", "west", "up"],
+    ["cat", "dog", "bird", "fish", "mouse"],
+  ];
+  for (let i = 0; i < tiePlan.length; i += 1) {
+    r = await playRound(all, tiePlan[i], `g2-r${i + 1}`);
+    if (i === tiePlan.length - 1) {
+      check(
+        "tie offers one more question",
+        r.nextLabel === "One more question",
+        r.nextLabel,
+      );
+      await shot(ana.page, "16-reveal-tied");
     }
-    receipt.checks.soulmateCompleted = true;
-  });
+    await r.next.click();
+  }
+  await ana.page.locator(".notice").waitFor({ timeout: 20_000 });
+  await shot(ana.page, "17-extra-question");
+  // Ana and Ben pair (tied); Cleo pairs with Eli (not tied: recorded, scores nothing).
+  r = await playRound(
+    all,
+    ["whisky", "whiskey", "lamp", "rug", "lamp"],
+    "g2-extra",
+  );
+  await shot(cleo.page, "18-extra-reveal-untied-pair");
+  const cleoSub = await cleo.page
+    .locator("main .fade .sub")
+    .first()
+    .innerText();
+  check(
+    "untied pair scores nothing in the extra question",
+    /only the tied pairs can score/.test(cleoSub),
+    cleoSub,
+  );
+  await r.next.click();
+  await ana.page.locator("#end-title").waitFor({ timeout: 20_000 });
+  const tieEnd = await ana.page.locator("main .sub").first().innerText();
+  check(
+    "won on the extra question",
+    tieEnd === "Won on the extra question.",
+    tieEnd,
+  );
+  await shot(ana.page, "19-end-extra");
 
-  await step("transfer host after original host leaves", async () => {
-    await alice.getByRole("button", { name: "Leave room" }).click();
-    await expect(alice.getByRole("button", { name: "Start a room" })).toBeVisible({ timeout: 20_000 });
-    await bob.setViewportSize({ width: 1440, height: 1000 });
-    const bobRoster = bob.locator(".roster li").filter({ hasText: "Bob QA (you)" });
-    await expect(bobRoster).toContainText("Host", { timeout: 20_000 });
-    await assertPanelsNotScrolled(bob);
-    await bob.screenshot({ path: shotPath("07-desktop-host-transfer.png"), fullPage: true });
-    receipt.checks.hostTransfer = true;
-
-    await alice.goto(`${baseUrl}/?room=${roomCode}`, { waitUntil: "domcontentloaded" });
-    await expect(alice.getByRole("button", { name: "Join room" })).toBeEnabled({ timeout: 20_000 });
-    await alice.getByRole("button", { name: "Join room" }).click();
-    await expect(bob.locator(".roster li").filter({ hasText: "Alice QA" })).toBeVisible({
-      timeout: 20_000,
-    });
-  });
-
-  await step("replay in two-player Hive Mind", async () => {
-    await bob.getByRole("button", { name: "Play again" }).click();
-    await expect(bob.getByText(/Round 1 of 8 · Hive Mind/)).toBeVisible({ timeout: 20_000 });
-    for (let index = 0; index < 8; index += 1) {
-      await playRound({ host: bob, other: alice, index, total: 8 });
+  // Game 3: two players, desktop host and reduced motion (US-007).
+  const duoA = await newPlayer("Fay", desktop, "reduce");
+  const duoB = await newPlayer("Gus", phone);
+  players.push(duoA, duoB);
+  const duoCode = await createRoom(duoA, false);
+  await joinRoom(duoB, duoCode, false);
+  await duoA.page.getByText("2 people here").waitFor({ timeout: 15_000 });
+  await shot(duoA.page, "20-duo-lobby-desktop");
+  await duoA.page.getByRole("button", { name: "Start game" }).click();
+  const duoPlan = [
+    ["sofa", "couch"],
+    ["tea", "coffee"],
+    ["TV", "television"],
+    ["kid", "child"],
+    ["up", "down"],
+    ["car", "automobile"],
+  ];
+  for (let i = 0; i < duoPlan.length; i += 1) {
+    r = await playRound([duoA, duoB], duoPlan[i], `g3-r${i + 1}`);
+    if (i === 0) {
+      check("duo reveal reads as co-op", r.head === "Same thing.", r.head);
+      await shot(duoA.page, "21-duo-reveal-desktop-reduced-motion");
     }
-    await assertPanelsNotScrolled(bob);
-    await bob.screenshot({ path: shotPath("08-desktop-final-record.png"), fullPage: true });
-    receipt.checks.replay = true;
-    receipt.checks.hiveMindCompleted = true;
-  });
+    if (i === duoPlan.length - 1)
+      check(
+        "duo never gets an extra question",
+        r.nextLabel === "See results",
+        r.nextLabel,
+      );
+    await r.next.click();
+  }
+  await duoA.page.locator("#end-title").waitFor({ timeout: 20_000 });
+  const duoEnd = await duoA.page.locator("#end-title").innerText();
+  check(
+    "duo end counts matches",
+    /^You matched \d of 6\.$/.test(duoEnd),
+    duoEnd,
+  );
+  await shot(duoA.page, "22-duo-end-desktop");
+  await shot(duoB.page, "23-duo-end-phone");
 
-  await step("host-ended abandonment closes room", async () => {
-    await bob.getByRole("button", { name: "Play again" }).click();
-    await expect(bob.getByText(/Round 1 of 8 · Hive Mind/)).toBeVisible({ timeout: 20_000 });
-    await bob.getByRole("button", { name: "Close room" }).click();
-    await bob.getByRole("button", { name: "Close for everyone" }).click();
-    await expect(alice.getByText("This room is closed")).toBeVisible({ timeout: 20_000 });
-    receipt.checks.hostEndedAbandonment = true;
-  });
-
-  receipt.checks.fixtureScoringLabelPresent = true;
-  receipt.checks.allRequiredJourneys =
-    receipt.checks.independentPlayers &&
-    receipt.checks.transportReconnect &&
-    receipt.checks.continuityReconnect &&
-    receipt.checks.soulmateCompleted &&
-    receipt.checks.hostTransfer &&
-    receipt.checks.replay &&
-    receipt.checks.hiveMindCompleted &&
-    receipt.checks.hostEndedAbandonment;
-  await playerA.close();
-  await playerB.close();
+  check(
+    "no browser errors",
+    receipt.browserErrors.length === 0,
+    receipt.browserErrors.join(" | "),
+  );
+  receipt.checks.allRequiredJourneys = "pass";
+} catch (error) {
+  receipt.failure = error instanceof Error ? error.message : String(error);
+  for (const p of players)
+    await p.page
+      .screenshot({
+        path: `${outputDir}/failure-${p.name}.png`,
+        fullPage: true,
+      })
+      .catch(() => {});
 } finally {
-  receipt.finishedAt = new Date().toISOString();
   await writeFile(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`);
   await browser.close();
 }
-
-if (!receipt.checks.allRequiredJourneys) {
-  throw new Error("required gameplay journey did not complete");
+if (receipt.failure) {
+  console.error(`playthrough failed: ${receipt.failure}`);
+  process.exit(1);
 }
-if (receipt.browserErrors.length > 0) {
-  throw new Error(`unexpected browser errors: ${JSON.stringify(receipt.browserErrors)}`);
-}
-console.log(`gameplay receipt: ${receiptPath}`);
+console.log(`playthrough passed; receipt: ${receiptPath}`);

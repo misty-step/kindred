@@ -1,24 +1,74 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { clusterLabel, revealHeadline } from "../app/reveal-copy.ts";
+import { endCopy, listNames, othersLine, outcome } from "../app/reveal-copy.ts";
 
-test("reveal headline uses the largest actual group", () => {
-  assert.equal(
-    revealHeadline([1, 3, 2]),
-    "Three of you found the same thought.",
+test("names list puts the viewer first and lowercases later mentions", () => {
+  assert.equal(listNames(["Sam", "You"]), "You and Sam");
+  assert.equal(listNames(["Sam", "Priya", "You"]), "You, Sam and Priya");
+  assert.equal(listNames(["Jo"]), "Jo");
+});
+
+test("the viewer's verdict distinguishes a scoring pair, a crowd and a single", () => {
+  assert.deepEqual(outcome({ kind: "pair", partner: "Theo", scored: true }), {
+    head: "You and Theo.",
+    sub: "Nobody else said it. +1 for you both.",
+  });
+  assert.match(
+    outcome({ kind: "pair", partner: "Theo", scored: false }).sub,
+    /only the tied pairs can score/,
   );
-  assert.equal(revealHeadline([4, 1]), "Four of you found the same thought.");
-  assert.equal(revealHeadline([2]), "Two of you found the same thought.");
+  assert.deepEqual(
+    outcome({ kind: "crowd", names: ["Sam", "You", "Priya"], text: "my dog" }),
+    {
+      head: "Too many.",
+      sub: "You, Sam and Priya all said my dog. Nobody scores.",
+    },
+  );
+  assert.equal(outcome({ kind: "single", text: "syrup" }).head, "Just you.");
 });
 
-test("reveal headline is honest when nobody matched", () => {
-  assert.equal(revealHeadline([1, 1, 1]), "Every thought took its own path.");
-  assert.equal(revealHeadline([]), "The room is still waiting for the reveal.");
+test("others line is empty when nothing else happened", () => {
+  assert.equal(othersLine([], []), "");
+  assert.equal(othersLine([["Jo", "Theo"]], []), "Jo and Theo paired.");
 });
 
-test("cluster labels match visible state and count", () => {
-  assert.equal(clusterLabel(1, false), "1 answer");
-  assert.equal(clusterLabel(2, false), "2 answers");
-  assert.equal(clusterLabel(1, true), "1 player");
-  assert.equal(clusterLabel(3, true), "3 players");
+test("end copy names the winner, a shared win, or no pair at all", () => {
+  assert.equal(
+    endCopy({
+      winners: [["Theo", "You"]],
+      shared: false,
+      decidedBy: "questions",
+      total: 3,
+    }).head,
+    "You and Theo win.",
+  );
+  assert.equal(
+    endCopy({
+      winners: [["Theo", "You"]],
+      shared: false,
+      decidedBy: "extra",
+      total: 3,
+    }).sub,
+    "Won on the extra question.",
+  );
+  assert.deepEqual(
+    endCopy({
+      winners: [
+        ["Jo", "Theo"],
+        ["Sam", "Priya"],
+      ],
+      shared: true,
+      decidedBy: "extra",
+      total: 2,
+    }),
+    {
+      head: "A shared win.",
+      sub: "Jo and Theo; Sam and Priya. Still tied after one more question.",
+    },
+  );
+  assert.equal(
+    endCopy({ winners: [], shared: false, decidedBy: "questions", total: 0 })
+      .head,
+    "No pair scored.",
+  );
 });

@@ -22,7 +22,6 @@ export type ProductEventProps =
   | Readonly<{
       room_players: number;
       round_count: number;
-      game_mode: "hive-mind" | "soulmate";
     }>
   | Readonly<{ round_index: number; prompt_id: string }>
   | Readonly<{ round_index: number; answer_length: number }>
@@ -34,7 +33,6 @@ export type ProductEventProps =
   | Readonly<{ rounds_played: number; total_score: number }>
   | Readonly<{
       previous_result: "completed" | "abandoned";
-      game_mode: "hive-mind" | "soulmate";
     }>
   | Readonly<{
       rounds_completed: number;
@@ -108,10 +106,6 @@ const integer =
     Number.isSafeInteger(value) &&
     Number(value) >= minimum &&
     Number(value) <= maximum;
-const number =
-  (minimum: number): PropRule =>
-  (value) =>
-    typeof value === "number" && Number.isFinite(value) && value >= minimum;
 const oneOf =
   (...values: readonly string[]): PropRule =>
   (value) =>
@@ -127,26 +121,24 @@ const EVENT_SPECS: Readonly<Record<KindredEventName, EventSpec>> = {
   room_joined: { room_players: integer(1, 12) },
   match_start: {
     room_players: integer(2, 12),
-    round_count: integer(1, 8),
-    game_mode: oneOf("hive-mind", "soulmate"),
+    round_count: integer(6, 6),
   },
-  round_start: { round_index: integer(0, 7), prompt_id: identifier },
+  round_start: { round_index: integer(0, 6), prompt_id: identifier },
   answer_submitted: {
-    round_index: integer(0, 7),
+    round_index: integer(0, 6),
     answer_length: integer(1, 64),
   },
   round_adjudicated: {
-    round_index: integer(0, 7),
+    round_index: integer(0, 6),
     result: oneOf("matched", "unmatched", "failed"),
   },
-  round_complete: { round_index: integer(0, 7), score: number(0) },
-  match_complete: { rounds_played: integer(1, 8), total_score: number(0) },
+  round_complete: { round_index: integer(0, 6), score: integer(0, 6) },
+  match_complete: { rounds_played: integer(6, 7), total_score: integer(0, 42) },
   replay: {
     previous_result: oneOf("completed", "abandoned"),
-    game_mode: oneOf("hive-mind", "soulmate"),
   },
   match_abandoned: {
-    rounds_completed: integer(0, 8),
+    rounds_completed: integer(0, 7),
     reason: oneOf("hard-deadline", "everyone-away", "host-ended"),
   },
 };

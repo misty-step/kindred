@@ -17,15 +17,11 @@
  */
 
 export const ANSWER_MAX_CHARS = 64;
-export const HIVE_MIND_TWO_PLAYER_ROUNDS = 8;
-export const SOULMATE_PARTNER_POINTS = 2;
-export const SOULMATE_UNIQUE_PARTNER_POINTS = 4;
-export const TWO_PLAYER_HOUSE_ANSWER_COUNT = 3;
 
 /** Curated equivalence rubric version. Retained adjudications record it. */
 export const EQUIVALENCE_RUBRIC_VERSION = 2;
 /** Bump when clustering or scoring semantics change. */
-export const RULES_VERSION = "kindred-rules/1";
+export const RULES_VERSION = "kindred-rules/2";
 
 export interface AnswerSubmission {
   answerId?: string;
@@ -76,11 +72,6 @@ export interface ClusterResult {
   verdicts: Record<string, OracleOutcome>;
   /** Pairs still awaiting adjudication. The reveal must wait for these. */
   unresolvedPairs: string[];
-}
-
-/** Authored display-only decoy answers for two-player Soulmate. */
-export interface HouseAnswer {
-  text: string;
 }
 
 /**
@@ -267,166 +258,71 @@ export function retainedVerdictsForRetry(
   return retained;
 }
 
-/**
- * A mutual two-player override for shared memories. The server records both
- * consent events before storing an override; rules only apply it. Overrides
- * merge clusters; they never split them.
- */
-export interface MutualOverride {
-  playerA: string;
-  playerB: string;
-}
-
-export function applyMutualOverrides(
-  result: ClusterResult,
-  overrides: readonly MutualOverride[],
-): ClusterResult {
-  const clusters: Cluster[] = result.clusters.map((c) => ({
-    anchor: c.anchor,
-    answers: [...c.answers],
-  }));
-  for (const override of overrides) {
-    const indexA = clusters.findIndex((c) =>
-      c.answers.some((a) => a.playerId === override.playerA),
-    );
-    const indexB = clusters.findIndex((c) =>
-      c.answers.some((a) => a.playerId === override.playerB),
-    );
-    if (indexA === -1 || indexB === -1 || indexA === indexB) {
-      continue;
-    }
-    // Deterministic merge: the earlier cluster absorbs the later one.
-    const [lo, hi] = indexA < indexB ? [indexA, indexB] : [indexB, indexA];
-    clusters[lo]!.answers.push(...clusters[hi]!.answers);
-    clusters.splice(hi, 1);
-  }
-  return { ...result, clusters };
-}
-
-/** The cluster containing this player's answer, or null. */
-export function clusterOfPlayer(
+/** US-005: Only clusters of exactly two distinct players earn a point. */
+export function exactPairs(
   clusters: readonly Cluster[],
-  playerId: string,
-): Cluster | null {
+): Array<{ a: string; b: string }> {
+  const pairs: Array<{ a: string; b: string }> = [];
   for (const cluster of clusters) {
-    if (cluster.answers.some((a) => a.playerId === playerId)) {
-      return cluster;
-    }
-  }
-  return null;
-}
-
-/** True when both players' answers ended in the same equivalent cluster. */
-export function playersShareCluster(
-  clusters: readonly Cluster[],
-  a: string,
-  b: string,
-): boolean {
-  const clusterA = clusterOfPlayer(clusters, a);
-  return clusterA !== null && clusterA.answers.some((x) => x.playerId === b);
-}
-
-/**
- * Hive Mind party scoring: one point for each OTHER player in the player's
- * equivalent group. Ceiling is n-1 when all n players share one group.
- * Players with no answer this round score zero.
- */
-export function hiveMindRoundScores(
-  clusters: readonly Cluster[],
-  playerIds: readonly string[],
-): Map<string, number> {
-  const scores = new Map<string, number>(playerIds.map((p) => [p, 0]));
-  for (const playerId of playerIds) {
-    const cluster = clusterOfPlayer(clusters, playerId);
-    if (!cluster) {
-      continue;
-    }
-    const others = new Set(
-      cluster.answers.map((a) => a.playerId).filter((p) => p !== playerId),
-    );
-    scores.set(playerId, others.size);
-  }
-  return scores;
-}
-
-/** A Soulmate pairing. Both members score from the same match. */
-export type Pairing = readonly [string, string];
-
-/**
- * Deterministic Soulmate pairing from seat order: seats 0 and 1 form the
- * first pair, 2 and 3 the second, and so on. With an odd player the last
- * seat stays unpaired and cannot score partner points. Never indexes past
- * the end regardless of count.
- */
-export function soulmatePairs<T extends string>(
-  playerIds: readonly T[],
-): (readonly [T, T])[] {
-  const pairs: (readonly [T, T])[] = [];
-  for (let i = 0; i + 1 < playerIds.length; i += 2) {
-    pairs.push([playerIds[i]!, playerIds[i + 1]!] as const);
+    if (cluster.answers.length !== 2) continue;
+    const [first, second] = cluster.answers;
+    if (first!.playerId === second!.playerId) continue;
+    const [a, b] = [first!.playerId, second!.playerId].sort();
+    pairs.push({ a: a!, b: b! });
   }
   return pairs;
 }
 
-/**
- * Soulmate party scoring per round:
- * - partner answers in the same equivalent group: SOULMATE_PARTNER_POINTS;
- * - that group contains no player outside the pair:
- *   SOULMATE_UNIQUE_PARTNER_POINTS instead;
- * - no partner match: zero.
- */
-export function soulmateRoundScores(
-  clusters: readonly Cluster[],
-  pairs: readonly Pairing[],
-): Map<string, number> {
-  const scores = new Map<string, number>();
-  for (const [a, b] of pairs) {
-    scores.set(a, 0);
-    scores.set(b, 0);
-  }
-  for (const [a, b] of pairs) {
-    if (!playersShareCluster(clusters, a, b)) {
-      continue;
+export interface ScoredPair {
+  a: string;
+  b: string;
+  scored: boolean;
+}
+
+export interface PairStanding {
+  a: string;
+  b: string;
+  total: number;
+  delta: number;
+}
+
+/** Totals across revealed rounds; delta reflects only the latest round. */
+export function pairStandings(
+  rounds: readonly { pairs: readonly ScoredPair[] }[],
+): PairStanding[] {
+  const standings = new Map<string, PairStanding>();
+  for (const [index, round] of rounds.entries()) {
+    for (const pair of round.pairs) {
+      if (!pair.scored) continue;
+      const key = JSON.stringify([pair.a, pair.b]);
+      const standing = standings.get(key);
+      if (standing) {
+        standing.total += 1;
+        if (index === rounds.length - 1) standing.delta += 1;
+      } else {
+        standings.set(key, {
+          a: pair.a,
+          b: pair.b,
+          total: 1,
+          delta: index === rounds.length - 1 ? 1 : 0,
+        });
+      }
     }
-    const cluster = clusterOfPlayer(clusters, a)!;
-    const outsiders = cluster.answers
-      .map((x) => x.playerId)
-      .filter((p) => p !== a && p !== b);
-    const points =
-      outsiders.length === 0
-        ? SOULMATE_UNIQUE_PARTNER_POINTS
-        : SOULMATE_PARTNER_POINTS;
-    scores.set(a, points);
-    scores.set(b, points);
   }
-  return scores;
+  return [...standings.values()].sort(
+    (x, y) =>
+      y.total - x.total || x.a.localeCompare(y.a) || x.b.localeCompare(y.b),
+  );
 }
 
-export interface TwoPlayerRound {
-  matched: boolean;
-}
-
-export interface SessionRecord {
-  roundsPlayed: number;
-  sharedThoughts: number;
-  /**
-   * Human-readable session record, e.g. "shared 6 of 8 thoughts".
-   * A record of what happened, never a compatibility score or percentage.
-   */
-  record: string;
-}
-
-/**
- * Two-player Hive Mind is cooperation over eight prompts. The outcome is a
- * session record: how many of the eight thoughts the pair shared.
- */
-export function twoPlayerSessionRecord(
-  rounds: readonly TwoPlayerRound[],
-): SessionRecord {
-  const shared = rounds.filter((r) => r.matched).length;
-  return {
-    roundsPlayed: rounds.length,
-    sharedThoughts: shared,
-    record: `shared ${shared} of ${rounds.length} thoughts`,
-  };
+/** US-006: no winning pair exists when nobody scored. */
+export function topPairs(
+  standings: readonly PairStanding[],
+): Array<{ a: string; b: string }> {
+  const highest = Math.max(0, ...standings.map((standing) => standing.total));
+  return highest === 0
+    ? []
+    : standings
+        .filter((standing) => standing.total === highest)
+        .map(({ a, b }) => ({ a, b }));
 }
